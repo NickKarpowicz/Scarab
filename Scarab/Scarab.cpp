@@ -21,10 +21,16 @@ void destroyMainWindowCallback();
 
 bool updateDisplay();
 void handleRunButton();
-void handleStopButton();
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void independentPlotQueue();
 void handleGetOverlay0();
+void handleGetOverlay1();
+void handleGetOverlay2();
+void handleDeleteOverlay0();
+void handleDeleteOverlay1();
+void handleDeleteOverlay2();
+void handleSave();
+void svgCallback();
 class OceanSpectrometer {
     std::vector<double> readBuffer;
     std::vector<double> wavelengthsBuffer;
@@ -59,16 +65,13 @@ public:
     bool initialized() {
         return isInitialized;
     }
-    void open() {
-        odapi_open_device(deviceID, &error);
-    }
+
     void release() {
         odapi_close_device(deviceID, &error);
     }
 
     void setIntegrationTime(unsigned long integrationTimeMicroseconds) {
         odapi_set_integration_time_micros(deviceID, &error, integrationTimeMicroseconds);
-
     }
 
     void acquireSingle() {
@@ -112,6 +115,19 @@ public:
             return overlay1.data();
         case 2:
             return overlay2.data();
+        default:
+            return nullptr;
+        }
+    }
+
+    void deleteOverlay(int overlayIndex) {
+        switch (overlayIndex) {
+        case 0:
+            hasOverlay0 = false;
+        case 1:
+            hasOverlay1 = false;
+        case 2:
+            hasOverlay2 = false;
         }
     }
 
@@ -210,7 +226,7 @@ public:
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
         int textWidth = 3;
-        int labelWidth = 6;
+        int labelWidth = 2;
         int plotWidth = 12;
         int plotHeight = 6;
         int pathChars = 40;
@@ -219,7 +235,7 @@ public:
         int textCol2a = textCol1a + 2 * textWidth + labelWidth;
         int textCol1b = textCol1a + textWidth;
         int textCol2b = textCol2a + textWidth;
-        int buttonCol1 = textCol2a - labelWidth;
+        int buttonCol1 = 3*textWidth;
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
@@ -235,15 +251,41 @@ public:
             "label, scale, range, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-        for (int i = 0; i < 1; ++i) {
-            textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
-        }
-        buttons[0].init(("Run"), parentHandle, buttonCol3, 0, buttonWidth, 1, handleRunButton);
-        buttons[0].init(("Stop"), parentHandle, buttonCol3, 1, buttonWidth, 1, handleStopButton);
-        buttons[0].init(("O"), parentHandle, buttonCol3, 2, buttonWidth, 1, handleGetOverlay0);
+
+        textBoxes[0].init(parentHandle, 2*textWidth, 1, textWidth, 1);
+        textBoxes[0].setLabel(-2*textWidth, 0, "Integration time (ms)");
+        buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
+        buttons[1].init(("Set O1"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
+        buttons[2].init(("Set O2"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay1);
+        buttons[3].init(("Set O3"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handleGetOverlay2);
+        buttons[3].init(("Save"), parentHandle, buttonCol1, 6, buttonWidth, 1, handleSave);
+
+        buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay0);
+        buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay1);
+        buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
 
 
-        textBoxes[0].setLabel(-labelWidth, 0, "Integration time (ms)");
+
+        textBoxes[1].init(parentHandle, 0, 2, textWidth, 1);
+        textBoxes[2].init(parentHandle, textWidth, 2, textWidth, 1);
+        textBoxes[3].init(parentHandle, 2*textWidth, 2, textWidth, 1);
+
+        textBoxes[4].init(parentHandle, 0, 3, textWidth, 1);
+        textBoxes[5].init(parentHandle, textWidth, 3, textWidth, 1);
+        textBoxes[6].init(parentHandle, 2 * textWidth, 3, textWidth, 1);
+
+        textBoxes[7].init(parentHandle, 0, 4, textWidth, 1);
+        textBoxes[8].init(parentHandle, textWidth, 4, textWidth, 1);
+        textBoxes[9].init(parentHandle, 2 * textWidth, 4, textWidth, 1);
+
+        textBoxes[10].init(parentHandle, 0, 5, textWidth, 1);
+        textBoxes[11].init(parentHandle, textWidth, 5, textWidth, 1);
+        textBoxes[12].init(parentHandle, 2 * textWidth, 5, textWidth, 1);
+
+        filePaths[0].init(parentHandle, 0, 6, 4 * textWidth, 1);
+        filePaths[0].setMaxCharacters(pathChars);
+        filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
+        
         textBoxes[48].init(window.parentHandle(4), 2, 0, 2, 1);
         textBoxes[49].init(window.parentHandle(4), 4, 0, 2, 1);
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
@@ -257,14 +299,22 @@ public:
         buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
         buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[11].squeeze();
+        buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
+        buttons[12].squeeze();
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
         
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
         initializeSpectrometers();
+        pulldowns[0].init(parentHandle, buttonCol1, 0, buttonWidth, 1);
+        pulldowns[0].setLabel(-labelWidth, 0, "Device:");
         drawBoxes[0].queueDraw();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
+
+
+
         //getSpectrum();
     }
 
@@ -293,9 +343,12 @@ public:
 			}
 			else {
 				console.cPrint("Device {}: {}\n    serial number: {}\n", i, deviceName, serialNumber.get());
+                std::string newElement = Sformat("{}: {}", i, deviceName);
+                pulldowns[0].addElement(newElement.c_str());
 			}
             spectrometerSet[i].init(deviceIds[i]);
 		}
+
 
 	}
 
@@ -309,16 +362,21 @@ void destroyMainWindowCallback() {
 }
 
 void handleRunButton() {
-    theGui.requestLive();
+    if (theGui.runningLive()) {
+        theGui.stopLive();
+    }
+    else {
+        theGui.requestLive();
+    }
+    
 }
 
-void handleStopButton() {
-    theGui.stopLive();
+void svgCallback() {
+    theGui.saveSVG = 1;
+    theGui.requestPlotUpdate();
 }
 
-void handleAddOverlay() {
 
-}
 void independentPlotQueue() {
     //theGui.requestPlotUpdate();
     //theGui.applyUpdate();
@@ -328,9 +386,33 @@ void independentPlotQueue() {
 void handleGetOverlay0() {
     spectrometerSet[0].acquireOverlay(0);
 }
-void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
 
-    if (!spectrometerSet[0].initialized()) {
+void handleGetOverlay1() {
+    spectrometerSet[0].acquireOverlay(1);
+}
+
+void handleGetOverlay2() {
+    spectrometerSet[0].acquireOverlay(2);
+}
+
+void handleDeleteOverlay0() {
+    spectrometerSet[0].deleteOverlay(0);
+}
+void handleDeleteOverlay1() {
+    spectrometerSet[0].deleteOverlay(1);
+}
+void handleDeleteOverlay2() {
+    spectrometerSet[0].deleteOverlay(2);
+}
+
+void handleSave() {
+
+}
+
+
+void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (!spectrometerSet[activeSpectrometer].initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n",spectrometerSet[0].getErrorCode());
         return;
     }
@@ -361,31 +443,52 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
 
     if (saveSVG) {
         std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
-        svgPath.append("_Sx.svg");
+        theGui.filePaths[0].copyBuffer(svgPath);
+        svgPath.append("_Spectrum.svg");
         sPlot.SVGPath = svgPath;
     }
-
+    
     if (theGui.runningLive()) {
-        spectrometerSet[0].setIntegrationTime(1000*theGui.textBoxes[0].valueDouble());
-        spectrometerSet[0].acquireSingle();
+        spectrometerSet[activeSpectrometer].setIntegrationTime(1000 * theGui.textBoxes[0].valueDouble());
+        spectrometerSet[activeSpectrometer].acquireSingle();
     }
     
+    LweColor mainColor(0.5, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
+        mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
+    }
+
+    LweColor overLay0Color(1, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[4].valueDouble() + theGui.textBoxes[5].valueDouble() + theGui.textBoxes[6].valueDouble())) {
+        overLay0Color = LweColor(theGui.textBoxes[4].valueDouble(), theGui.textBoxes[5].valueDouble(), theGui.textBoxes[6].valueDouble(), 1);
+    }
+
+    LweColor overLay1Color(1, 0.5, 0, 1);
+    if (0.0 != (theGui.textBoxes[7].valueDouble() + theGui.textBoxes[8].valueDouble() + theGui.textBoxes[9].valueDouble())) {
+        overLay1Color = LweColor(theGui.textBoxes[7].valueDouble(), theGui.textBoxes[8].valueDouble(), theGui.textBoxes[9].valueDouble(), 1);
+    }
+
+    LweColor overLay2Color(0, 1, 1, 1);
+    if (0.0 != (theGui.textBoxes[10].valueDouble() + theGui.textBoxes[11].valueDouble() + theGui.textBoxes[12].valueDouble())) {
+        overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
+    }
 
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = 1;
-    sPlot.dataX = spectrometerSet[0].wavelengths();
+    sPlot.dataX = spectrometerSet[activeSpectrometer].wavelengths();
     sPlot.hasDataX = true;
-    sPlot.data = spectrometerSet[0].data();
-    sPlot.Npts = spectrometerSet[0].size();
+    sPlot.data = spectrometerSet[activeSpectrometer].data();
+    sPlot.Npts = spectrometerSet[activeSpectrometer].size();
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
     if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(0.5, 0, 1, 1);
-    sPlot.color2 = LweColor(1, 0, 1, 1);
+    sPlot.color = mainColor;
+    sPlot.color2 = overLay0Color;
+    sPlot.color3 = overLay1Color;
+    sPlot.color4 = overLay2Color;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Wavelength (nm)";
     sPlot.yLabel = "Spectrum (counts)";
@@ -393,20 +496,27 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = yMax;
-
-    if (spectrometerSet[0].getOverlayCount() > 0) {
-        sPlot.ExtraLines = spectrometerSet[0].getOverlayCount();
-        if (spectrometerSet[0].hasOverlay0) {
-            sPlot.data2 = spectrometerSet[0].getOverlay(0);
+    sPlot.markers = false;
+    if (spectrometerSet[activeSpectrometer].getOverlayCount() > 0) {
+        int firstAdded = -1;
+        int secondAdded = -1;
+        sPlot.ExtraLines = spectrometerSet[activeSpectrometer].getOverlayCount();
+        if (spectrometerSet[activeSpectrometer].hasOverlay0) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(0);
+            firstAdded = 0;
         }
-        else if (spectrometerSet[0].hasOverlay1) {
-            sPlot.data2 = spectrometerSet[0].getOverlay(1);
+        else if (spectrometerSet[activeSpectrometer].hasOverlay1) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(1);
+            firstAdded = 1;
         }
-        else if (spectrometerSet[0].hasOverlay2) {
-            sPlot.data2 = spectrometerSet[0].getOverlay(2);
+        else if (spectrometerSet[activeSpectrometer].hasOverlay2) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(2);
+            firstAdded = 2;
         }
-        //if (sPlot.ExtraLines > 1) sPlot.data2 = spectrometerSet[0].getOverlay(0);
-        //if (sPlot.ExtraLines > 2) sPlot.data2 = spectrometerSet[0].getOverlay(1);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[0].getOverlay(1);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[0].getOverlay(2);
+       
+        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[0].getOverlay(2);
     }
     sPlot.plot(cr);
 
