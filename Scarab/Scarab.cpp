@@ -2,6 +2,9 @@
 //
 
 #include <iostream>
+#include <thread>
+#include <chrono>
+#include <algorithm>
 #include "api/OceanDirectAPI.h"
 #include "LightwaveExplorerGTK/LightwaveExplorerGraphicalClasses.h"
 
@@ -29,21 +32,35 @@ void handleGetOverlay2();
 void handleDeleteOverlay0();
 void handleDeleteOverlay1();
 void handleDeleteOverlay2();
+void handleGetDarkSpectrum();
+void handleDeleteDarkSpectrum();
+void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void handleSave();
 void svgCallback();
 class OceanSpectrometer {
     std::vector<double> readBuffer;
+    std::vector<double> readBufferMinusDark;
     std::vector<double> wavelengthsBuffer;
     std::vector<double> overlay0;
+    std::vector<double> overlay0MinusDark;
     std::vector<double> overlay1;
+    std::vector<double> overlay1MinusDark;
     std::vector<double> overlay2;
-
+    std::vector<double> overlay2MinusDark;
+    std::vector<double> darkSpectrum;
+    bool hasDarkSpectrum;
     int lastOverlay = -1;
     int pixelCount = 0;
     bool isInitialized = false;
     long deviceID = 0;
     int error = 0;
-
+    bool isLocked = false;
+    void subtractDark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
+        if (!hasDarkSpectrum) return;
+        for (size_t i = 0; i < pixelCount; i++) {
+            dataMinusDark[i] = dataVector[i] - darkSpectrum[i];
+        }
+    }
 public:
     bool hasOverlay0 = false;
     bool hasOverlay1 = false;
@@ -52,6 +69,14 @@ public:
 		deviceID = deviceIDinput;
 		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
         readBuffer = std::vector<double>(pixelCount);
+        readBufferMinusDark = readBuffer;
+        overlay0 = readBuffer;
+        overlay0MinusDark = readBuffer;
+        overlay1 = readBuffer;
+        overlay1MinusDark = readBuffer;
+        overlay2 = readBuffer;
+        overlay2MinusDark = readBuffer;
+        darkSpectrum = readBuffer;
         wavelengthsBuffer = std::vector<double>(pixelCount);
 		
         if (error != 0 ) {
@@ -76,29 +101,50 @@ public:
 
     void acquireSingle() {
         odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
+        subtractDark(readBuffer, readBufferMinusDark);
     }
 
-    void acquireOverlay(int overlayIndex) {
-        std::vector<double> newOverlay(pixelCount);
-        odapi_get_formatted_spectrum(deviceID, &error, newOverlay.data(), pixelCount);
+    void lock() {
+        isLocked = true;
+    }
+    void unlock() {
+        isLocked = false;
+    }
+    bool checkLock() {
+        return isLocked;
+    }
+    void acquireOverlay(int overlayIndex) {        
+        
         switch (overlayIndex) {
         case 0:
-            overlay0 = newOverlay;
+            odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
+            subtractDark(overlay0, overlay0MinusDark);
             lastOverlay = 0;
             hasOverlay0 = true;
             break;
         case 1:
-            overlay1 = newOverlay;
+            odapi_get_formatted_spectrum(deviceID, &error, overlay1.data(), pixelCount);
+            subtractDark(overlay1, overlay1MinusDark);
             lastOverlay = 1;
             hasOverlay1 = true;
             break;
         case 2:
-            overlay2 = newOverlay;
+            odapi_get_formatted_spectrum(deviceID, &error, overlay2.data(), pixelCount);
+            subtractDark(overlay1, overlay1MinusDark);
             lastOverlay = 2;
             hasOverlay2 = true;
             break;
         }
     }
+    void acquireDarkSpectrum() {
+        darkSpectrum = std::vector<double>(pixelCount);
+        odapi_get_formatted_spectrum(deviceID, &error, darkSpectrum.data(), pixelCount);
+        hasDarkSpectrum = true;
+    }
+    void disableDarkSpectrum() {
+        hasDarkSpectrum = false;
+    }
+
     int getOverlayCount() {
         int overlayCount = 0;
         if (hasOverlay0) overlayCount++;
@@ -110,10 +156,13 @@ public:
     double* getOverlay(int overlayIndex) {
         switch (overlayIndex) {
         case 0:
+            if(hasDarkSpectrum) return overlay0MinusDark.data();
             return overlay0.data();
         case 1:
+            if (hasDarkSpectrum) return overlay1MinusDark.data();
             return overlay1.data();
         case 2:
+            if (hasDarkSpectrum) return overlay2MinusDark.data();
             return overlay2.data();
         default:
             return nullptr;
@@ -132,15 +181,30 @@ public:
     }
 
     double* data() {
+        if (hasDarkSpectrum) return readBufferMinusDark.data();
         return readBuffer.data();
+    }
+
+    void appendBufferTo(std::vector<double>& outputBuffer) {
+        if (hasDarkSpectrum) { 
+            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end()); 
+        }
+        else {
+            outputBuffer.insert(outputBuffer.end(), readBufferMinusDark.begin(), readBufferMinusDark.end());
+        }
+        
     }
 
     double* wavelengths() {
         return wavelengthsBuffer.data();
     }
 
+    std::vector<double> wavelengthsCopy() {
+        return wavelengthsBuffer;
+    }
+
     size_t size() {
-        return readBuffer.size();
+        return pixelCount;
     }
 
     int getErrorCode() {
@@ -148,6 +212,73 @@ public:
     }
 };
 std::vector<OceanSpectrometer> spectrometerSet;
+
+class batchAcquisition {
+    std::vector<double> data;
+    std::vector<double> wavelengths;
+    bool hasData = false;
+    bool acquisitionFinished = false;
+    size_t spectrumSize = 0;
+    size_t acquisitionCount = 0;
+public:
+
+    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+        if (N == 0) return;
+        s.lock();
+        spectrumSize = s.size();
+        wavelengths = s.wavelengthsCopy();
+        data.clear();
+        data.reserve(N * spectrumSize);
+        acquisitionCount = 0;
+        acquisitionFinished = false;
+        s.setIntegrationTime((unsigned long)round(1000 * integrationTime));
+        for (size_t i = 0; i < N; i++) {
+            s.acquireSingle();
+            s.appendBufferTo(data);
+            acquisitionCount++;
+            std::this_thread::sleep_for(std::chrono::milliseconds((size_t)(1000.0 * secondsToWait)));
+            hasData = true;
+        }
+        acquisitionFinished = true;
+        s.unlock();
+    }
+
+    double* getData(size_t offset) {
+        return &data.data()[offset * spectrumSize];
+    }
+
+    void save(std::string& path, bool timestamp) {
+        if (!hasData) return;
+        if (timestamp) {
+            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            size_t lastPeriod = path.find_last_of(".");
+            //if the extension is weird or absent, just put timestamp at end
+            if (lastPeriod == std::string::npos || (path.length() - lastPeriod) > 6) {
+                path.append(Sformat("{}", timestamp));
+            }
+            else {
+                path.insert(lastPeriod, Sformat("{}", timestamp));
+            }
+        }
+        std::ofstream fs(path, std::ios::binary);
+        if (fs.fail()) return;
+        fs.precision(10);
+        for (size_t j = 0; j < spectrumSize; j++) {
+            fs << wavelengths[j];
+            for (size_t i = 0; i < acquisitionCount; i++) {
+                fs << " ";
+                fs << data[i * spectrumSize + j];
+            }
+            fs << '\x0A';
+        }
+
+    }
+
+    size_t getSpectrumSize() {
+        return spectrumSize;
+    }
+};
+batchAcquisition theBatch;
 
 //Main class for controlling the interface
 class mainGui {
@@ -157,6 +288,7 @@ class mainGui {
     bool queueInterfaceValuesUpdate;
     bool isRunningLive;
     int sliderTarget;
+    
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[16];
@@ -229,7 +361,7 @@ public:
         int labelWidth = 2;
         int plotWidth = 12;
         int plotHeight = 6;
-        int pathChars = 40;
+        int pathChars = 45;
         int colWidth = labelWidth + 2 * textWidth;
         int textCol1a = labelWidth;
         int textCol2a = textCol1a + 2 * textWidth + labelWidth;
@@ -252,40 +384,52 @@ public:
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
 
-        textBoxes[0].init(parentHandle, 2*textWidth, 1, textWidth, 1);
-        textBoxes[0].setLabel(-2*textWidth, 0, "Integration time (ms)");
+
         buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
-        buttons[1].init(("Set O1"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
-        buttons[2].init(("Set O2"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay1);
-        buttons[3].init(("Set O3"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handleGetOverlay2);
-        buttons[3].init(("Save"), parentHandle, buttonCol1, 6, buttonWidth, 1, handleSave);
+        buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 2, buttonWidth/2, 1, handleGetOverlay0);
+        buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth / 2, 1, handleGetOverlay1);
+        buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay2);
+        buttons[3].init(("Acquire"), parentHandle, buttonCol1, 8, buttonWidth, 1, handleSave);
 
-        buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay0);
-        buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay1);
-        buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
+        buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 2, buttonWidth / 2, 1, handleDeleteOverlay0);
+        buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay1);
+        buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay2);
+        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 9, buttonWidth / 2, 1, handleGetDarkSpectrum);
+        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 9, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
+        //RGB active
+        textBoxes[1].init(parentHandle, 0, 1, textWidth, 1);
+        textBoxes[2].init(parentHandle, textWidth, 1, textWidth, 1);
+        textBoxes[3].init(parentHandle, 2*textWidth, 1, textWidth, 1);
 
+        //RGB overlay0
+        textBoxes[4].init(parentHandle, 0, 2, textWidth, 1);
+        textBoxes[5].init(parentHandle, textWidth, 2, textWidth, 1);
+        textBoxes[6].init(parentHandle, 2 * textWidth, 2, textWidth, 1);
 
+        //RGB overlay1
+        textBoxes[7].init(parentHandle, 0, 3, textWidth, 1);
+        textBoxes[8].init(parentHandle, textWidth, 3, textWidth, 1);
+        textBoxes[9].init(parentHandle, 2 * textWidth, 3, textWidth, 1);
 
-        textBoxes[1].init(parentHandle, 0, 2, textWidth, 1);
-        textBoxes[2].init(parentHandle, textWidth, 2, textWidth, 1);
-        textBoxes[3].init(parentHandle, 2*textWidth, 2, textWidth, 1);
+        //RGB overlay2
+        textBoxes[10].init(parentHandle, 0, 4, textWidth, 1);
+        textBoxes[11].init(parentHandle, textWidth, 4, textWidth, 1);
+        textBoxes[12].init(parentHandle, 2 * textWidth, 4, textWidth, 1);
 
-        textBoxes[4].init(parentHandle, 0, 3, textWidth, 1);
-        textBoxes[5].init(parentHandle, textWidth, 3, textWidth, 1);
-        textBoxes[6].init(parentHandle, 2 * textWidth, 3, textWidth, 1);
+        textBoxes[0].init(parentHandle, 2 * textWidth, 6, textWidth, 1);
+        textBoxes[0].setLabel(-2 * textWidth, 0, "Exposure (ms)");
 
-        textBoxes[7].init(parentHandle, 0, 4, textWidth, 1);
-        textBoxes[8].init(parentHandle, textWidth, 4, textWidth, 1);
-        textBoxes[9].init(parentHandle, 2 * textWidth, 4, textWidth, 1);
+        textBoxes[13].init(parentHandle, 2 * textWidth, 7, textWidth, 1);
+        textBoxes[13].setLabel(-2 * textWidth, 0, "Pause (s)");
 
-        textBoxes[10].init(parentHandle, 0, 5, textWidth, 1);
-        textBoxes[11].init(parentHandle, textWidth, 5, textWidth, 1);
-        textBoxes[12].init(parentHandle, 2 * textWidth, 5, textWidth, 1);
+        textBoxes[14].init(parentHandle, 2 * textWidth, 8, textWidth, 1);
+        textBoxes[14].setLabel(-2 * textWidth, 0, "Acquisition #");
 
-        filePaths[0].init(parentHandle, 0, 6, 4 * textWidth, 1);
+        filePaths[0].init(parentHandle, 0, 5, 11, 1);
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
-        
+        checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 6, 2, 1);
+        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 5, buttonWidth / 2, 1, saveFileDialogCallback, 0);
         textBoxes[48].init(window.parentHandle(4), 2, 0, 2, 1);
         textBoxes[49].init(window.parentHandle(4), 4, 0, 2, 1);
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
@@ -308,8 +452,8 @@ public:
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
         initializeSpectrometers();
-        pulldowns[0].init(parentHandle, buttonCol1, 0, buttonWidth, 1);
-        pulldowns[0].setLabel(-labelWidth, 0, "Device:");
+        pulldowns[0].init(parentHandle, 0, 0, 13, 1);
+        //pulldowns[0].setLabel(-labelWidth, 0, "Device:");
         drawBoxes[0].queueDraw();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
 
@@ -325,8 +469,8 @@ public:
         int retrievedIdCount = odapi_get_device_ids(deviceIds.data(), deviceIdCount);
         int error = 0;
         spectrometerSet = std::vector<OceanSpectrometer>(deviceCount);
-		for (int i = 0; i < deviceCount; i++) {
-			odapi_open_device(deviceIds[0], &error);
+		for (int i = 0; i < 2; i++) {
+			odapi_open_device(deviceIds[i], &error);
 			// Get the device name
 			const int nameLength = 32;
 			char deviceName[nameLength] = { 0 };
@@ -384,29 +528,52 @@ void independentPlotQueue() {
 }
 
 void handleGetOverlay0() {
-    spectrometerSet[0].acquireOverlay(0);
+    spectrometerSet[theGui.pulldowns[0].getValue()].acquireOverlay(0);
 }
 
 void handleGetOverlay1() {
-    spectrometerSet[0].acquireOverlay(1);
+    spectrometerSet[theGui.pulldowns[0].getValue()].acquireOverlay(1);
 }
 
 void handleGetOverlay2() {
-    spectrometerSet[0].acquireOverlay(2);
+    spectrometerSet[theGui.pulldowns[0].getValue()].acquireOverlay(2);
 }
 
 void handleDeleteOverlay0() {
-    spectrometerSet[0].deleteOverlay(0);
+    spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(0);
 }
 void handleDeleteOverlay1() {
-    spectrometerSet[0].deleteOverlay(1);
+    spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(1);
 }
 void handleDeleteOverlay2() {
-    spectrometerSet[0].deleteOverlay(2);
+    spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(2);
+}
+
+void handleGetDarkSpectrum() {
+    spectrometerSet[theGui.pulldowns[0].getValue()].acquireDarkSpectrum();
+}
+
+void handleDeleteDarkSpectrum() {
+    spectrometerSet[theGui.pulldowns[0].getValue()].disableDarkSpectrum();
+}
+
+void acquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait, std::string path, bool timestamp) {
+    theBatch.acquireBatch(N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
+    theBatch.save(path, timestamp);
+    theGui.console.tPrint("Finished writing {}!\n", path);
 }
 
 void handleSave() {
-
+    theGui.stopLive();
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (spectrometerSet[activeSpectrometer].checkLock()) return;
+    std::string path;
+    theGui.filePaths[0].copyBuffer(path);
+    bool timestamp = theGui.checkBoxes[2].isChecked();
+    size_t N = (size_t)theGui.textBoxes[14].valueDouble();
+    double integrationTime = theGui.textBoxes[0].valueDouble();
+    double waitTime = theGui.textBoxes[13].valueDouble();
+    std::thread(acquisitionThread, activeSpectrometer, N, integrationTime, waitTime, path, timestamp).detach();
 }
 
 
@@ -448,8 +615,8 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         sPlot.SVGPath = svgPath;
     }
     
-    if (theGui.runningLive()) {
-        spectrometerSet[activeSpectrometer].setIntegrationTime(1000 * theGui.textBoxes[0].valueDouble());
+    if (theGui.runningLive() && !spectrometerSet[activeSpectrometer].checkLock()) {
+        spectrometerSet[activeSpectrometer].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         spectrometerSet[activeSpectrometer].acquireSingle();
     }
     
@@ -475,7 +642,6 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
 
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = 1;
     sPlot.dataX = spectrometerSet[activeSpectrometer].wavelengths();
     sPlot.hasDataX = true;
     sPlot.data = spectrometerSet[activeSpectrometer].data();
@@ -495,7 +661,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = yMax;
+    sPlot.forcedXmin = xMin;
     sPlot.markers = false;
     if (spectrometerSet[activeSpectrometer].getOverlayCount() > 0) {
         int firstAdded = -1;
@@ -527,6 +693,33 @@ bool updateDisplay() {
     theGui.console.updateFromBuffer();
     theGui.applyUpdate();
     return true;
+}
+void pathFromDialogBox(GtkDialog* dialog, int response) {
+    if (response == GTK_RESPONSE_ACCEPT) {
+        GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
+        GFile* file = gtk_file_chooser_get_file(chooser);
+        std::string s(g_file_get_path(file));
+        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
+        
+    }
+    g_object_unref(dialog);
+    }
+void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
+    theGui.pathTarget = (size_t)pathTarget;
+    //get around bug in GTK4 by opening dialog box directly in cocoa on mac
+#ifdef __APPLE__
+    NSString* filePath;
+    NSSavePanel* savePanel = [NSSavePanel savePanel];
+    if ([savePanel runModal] == NSModalResponseOK) {
+        filePath = [savePanel URL].path;
+        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", [filePath UTF8String]);
+    }
+    return;
+#else
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
+    g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
+    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
+#endif
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {
