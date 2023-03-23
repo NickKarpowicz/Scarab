@@ -1,6 +1,3 @@
-// Scarab.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -8,24 +5,10 @@
 #include "api/OceanDirectAPI.h"
 #include "LightwaveExplorerGTK/LightwaveExplorerGraphicalClasses.h"
 
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
-
 void destroyMainWindowCallback();
-
 bool updateDisplay();
 void handleRunButton();
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void independentPlotQueue();
 void handleGetOverlay0();
 void handleGetOverlay1();
 void handleGetOverlay2();
@@ -34,9 +17,13 @@ void handleDeleteOverlay1();
 void handleDeleteOverlay2();
 void handleGetDarkSpectrum();
 void handleDeleteDarkSpectrum();
+void handleRefreshRequest();
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void handleSave();
 void svgCallback();
+
+//Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
+//buffers for the data and overlays
 class OceanSpectrometer {
     std::vector<double> readBuffer;
     std::vector<double> readBufferMinusDark;
@@ -69,14 +56,14 @@ public:
 		deviceID = deviceIDinput;
 		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
         readBuffer = std::vector<double>(pixelCount);
-        readBufferMinusDark = readBuffer;
-        overlay0 = readBuffer;
-        overlay0MinusDark = readBuffer;
-        overlay1 = readBuffer;
-        overlay1MinusDark = readBuffer;
-        overlay2 = readBuffer;
-        overlay2MinusDark = readBuffer;
-        darkSpectrum = readBuffer;
+        readBufferMinusDark = std::vector<double>(pixelCount);
+        overlay0 = std::vector<double>(pixelCount);
+        overlay0MinusDark = std::vector<double>(pixelCount);
+        overlay1 = std::vector<double>(pixelCount);
+        overlay1MinusDark = std::vector<double>(pixelCount);
+        overlay2 = std::vector<double>(pixelCount);
+        overlay2MinusDark = std::vector<double>(pixelCount);
+        darkSpectrum = std::vector<double>(pixelCount);
         wavelengthsBuffer = std::vector<double>(pixelCount);
 		
         if (error != 0 ) {
@@ -130,7 +117,7 @@ public:
             break;
         case 2:
             odapi_get_formatted_spectrum(deviceID, &error, overlay2.data(), pixelCount);
-            subtractDark(overlay1, overlay1MinusDark);
+            subtractDark(overlay2, overlay2MinusDark);
             lastOverlay = 2;
             hasOverlay2 = true;
             break;
@@ -173,10 +160,13 @@ public:
         switch (overlayIndex) {
         case 0:
             hasOverlay0 = false;
+            break;
         case 1:
             hasOverlay1 = false;
+            break;
         case 2:
             hasOverlay2 = false;
+            break;
         }
     }
 
@@ -213,6 +203,9 @@ public:
 };
 std::vector<OceanSpectrometer> spectrometerSet;
 
+
+//Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
+//to acquire and save the data
 class batchAcquisition {
     std::vector<double> data;
     std::vector<double> wavelengths;
@@ -282,12 +275,13 @@ batchAcquisition theBatch;
 
 //Main class for controlling the interface
 class mainGui {
-    bool queueUpdate;
-    bool queueSliderUpdate;
-    bool queueSliderMove;
-    bool queueInterfaceValuesUpdate;
-    bool isRunningLive;
-    int sliderTarget;
+    bool queueUpdate = false;
+    bool queueSliderUpdate = false;
+    bool queueSliderMove = false;
+    bool queueInterfaceValuesUpdate = false;
+    bool isRunningLive = false;
+    bool noSpectrometers = false;
+    int sliderTarget = 0;
     
 public:
     LweTextBox textBoxes[54];
@@ -307,19 +301,8 @@ public:
     size_t pathTarget;
     int saveSVG = 0;
     bool loadedDefaults = false;
-    unsigned int timeoutID;
-    mainGui() : queueUpdate(0),
-        queueSliderUpdate(0),
-        queueSliderMove(0),
-        queueInterfaceValuesUpdate(0),
-        isRunningLive(false),
-        sliderTarget(0),
-        pathTarget(0),
-        saveSVG(0),
-        loadedDefaults(0),
-        timeoutID(0) {}
-    ~mainGui() {
-    }
+    unsigned int timeoutID = 0;
+
     void requestPlotUpdate() {
         queueUpdate = true;
     }
@@ -331,16 +314,15 @@ public:
     void stopLive() {
         isRunningLive = false;
     }
-
+    bool noSpectrometersFound() {
+        return noSpectrometers;
+    }
     [[nodiscard]] constexpr bool runningLive() { return isRunningLive; }
     void applyUpdate() {
         if (queueUpdate) {
             queueUpdate = false;
             drawBoxes[0].queueDraw();
         }
-
-        //progressBarBox.queueDraw();
-
     }
     void requestSliderUpdate() {
         queueSliderUpdate = true;
@@ -352,8 +334,6 @@ public:
     void requestInterfaceValuesUpdate() {
         queueInterfaceValuesUpdate = true;
     }
-
-    
 
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
@@ -437,10 +417,10 @@ public:
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawSpectrum);
         checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
-        buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, handleRefreshRequest);
         buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
-        buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, handleRefreshRequest);
         buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[11].squeeze();
         buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
@@ -453,23 +433,25 @@ public:
         window.present();
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 13, 1);
-        //pulldowns[0].setLabel(-labelWidth, 0, "Device:");
         drawBoxes[0].queueDraw();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
-
-
-
-        //getSpectrum();
     }
 
     void initializeSpectrometers() {
         int deviceCount = odapi_probe_devices();
+        if (deviceCount == 0) {
+            console.cPrint("I didn't find any spectrometers...\nMake sure you've installed the driver.\n");
+            noSpectrometers = true;
+            return;
+        }
         int deviceIdCount = odapi_get_number_of_device_ids();
+
         std::vector<long> deviceIds(deviceIdCount);
         int retrievedIdCount = odapi_get_device_ids(deviceIds.data(), deviceIdCount);
         int error = 0;
-        spectrometerSet = std::vector<OceanSpectrometer>(deviceCount);
-		for (int i = 0; i < 2; i++) {
+        spectrometerSet = std::vector<OceanSpectrometer>(deviceIdCount);
+        
+		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
 			// Get the device name
 			const int nameLength = 32;
@@ -492,8 +474,6 @@ public:
 			}
             spectrometerSet[i].init(deviceIds[i]);
 		}
-
-
 	}
 
 };
@@ -512,7 +492,6 @@ void handleRunButton() {
     else {
         theGui.requestLive();
     }
-    
 }
 
 void svgCallback() {
@@ -520,11 +499,8 @@ void svgCallback() {
     theGui.requestPlotUpdate();
 }
 
-
-void independentPlotQueue() {
-    //theGui.requestPlotUpdate();
-    //theGui.applyUpdate();
-    theGui.console.cPrint("works\n");
+void handleRefreshRequest() {
+    theGui.requestPlotUpdate();
 }
 
 void handleGetOverlay0() {
@@ -542,9 +518,11 @@ void handleGetOverlay2() {
 void handleDeleteOverlay0() {
     spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(0);
 }
+
 void handleDeleteOverlay1() {
     spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(1);
 }
+
 void handleDeleteOverlay2() {
     spectrometerSet[theGui.pulldowns[0].getValue()].deleteOverlay(2);
 }
@@ -576,8 +554,8 @@ void handleSave() {
     std::thread(acquisitionThread, activeSpectrometer, N, integrationTime, waitTime, path, timestamp).detach();
 }
 
-
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     int activeSpectrometer = theGui.pulldowns[0].getValue();
     if (!spectrometerSet[activeSpectrometer].initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n",spectrometerSet[0].getErrorCode());
@@ -679,15 +657,14 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
             sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(2);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[0].getOverlay(1);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[0].getOverlay(2);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(1);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(2);
        
-        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[0].getOverlay(2);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlay(2);
     }
     sPlot.plot(cr);
-
-    
 }
+
 bool updateDisplay() {
     theGui.requestPlotUpdate();
     theGui.console.updateFromBuffer();
@@ -730,6 +707,7 @@ static void activate(GtkApplication* app, gpointer user_data) {
 #endif
     theGui.activate(app);
 }
+
 int main(int argc, char** argv) {
     GtkApplication* app = gtk_application_new("nickkarpowicz.lightwave", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
