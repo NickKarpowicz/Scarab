@@ -68,6 +68,9 @@ class OceanSpectrometer {
     std::vector<double> overlay1MinusDark;
     std::vector<double> overlay2;
     std::vector<double> overlay2MinusDark;
+    std::vector<double> overlay0F;
+    std::vector<double> overlay1F;
+    std::vector<double> overlay2F;
     std::vector<double> darkSpectrum;
     bool hasDarkSpectrum = false;
     int lastOverlay = -1;
@@ -77,7 +80,10 @@ class OceanSpectrometer {
     int error = 0;
     bool isLocked = false;
     void subtractDark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
-        if (!hasDarkSpectrum) return;
+        if (!hasDarkSpectrum) {
+            dataMinusDark = dataVector;
+            return;
+        }
         for (size_t i = 0; i < pixelCount; i++) {
             dataMinusDark[i] = dataVector[i] - darkSpectrum[i];
         }
@@ -146,6 +152,7 @@ public:
         case 0:
             odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
             subtractDark(overlay0, overlay0MinusDark);
+            
             lastOverlay = 0;
             hasOverlay0 = true;
             break;
@@ -193,6 +200,23 @@ public:
             return overlay2.data();
         default:
             return nullptr;
+        }
+    }
+
+    double* getOverlayFrequency(int overlayIndex, const std::vector<double> frequencies) {
+        switch (overlayIndex) {
+        case 0:
+            if (hasDarkSpectrum) overlay0F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay0MinusDark);
+            else overlay0F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay0);
+            return overlay0F.data();
+        case 1:
+            if (hasDarkSpectrum) overlay1F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay1MinusDark);
+            overlay1F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay1);
+            return overlay1F.data();
+        case 2:
+            if (hasDarkSpectrum) overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2MinusDark);
+            overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2);
+            return overlay2F.data();
         }
     }
 
@@ -1213,19 +1237,19 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
         int secondAdded = -1;
         sPlot.ExtraLines = spectrometerSet[activeSpectrometer].getOverlayCount();
         if (spectrometerSet[activeSpectrometer].hasOverlay0) {
-            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(0);
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlayFrequency(0, frequencies);
             firstAdded = 0;
         }
         else if (spectrometerSet[activeSpectrometer].hasOverlay1) {
-            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(1);
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlayFrequency(1, frequencies);
             firstAdded = 1;
         }
         else if (spectrometerSet[activeSpectrometer].hasOverlay2) {
-            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(2);
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlayFrequency(2, frequencies);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(1);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(2);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlayFrequency(1, frequencies);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlayFrequency(2, frequencies);
 
         if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlay(2);
     }
