@@ -588,8 +588,13 @@ public:
         buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 2, buttonWidth / 2, 1, handleDeleteOverlay0);
         buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay1);
         buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay2);
-        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 9, buttonWidth / 2, 1, handleGetDarkSpectrum);
-        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 9, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
+        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 7, buttonWidth / 2, 1, handleGetDarkSpectrum);
+        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 7, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
+        
+        buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleRunButton);
+        buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleRunButton);
+        buttons[11].init(("Run"), parentHandle, 0, 13, buttonWidth, 1, handleRunButton);
+        buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleRunButton);
         //RGB active
         textBoxes[1].init(parentHandle, 0, 1, textWidth, 1);
         textBoxes[2].init(parentHandle, textWidth, 1, textWidth, 1);
@@ -619,6 +624,15 @@ public:
         textBoxes[14].init(parentHandle, 2 * textWidth, 8, textWidth, 1);
         textBoxes[14].setLabel(-2 * textWidth, 0, "Acquisition #");
 
+        textBoxes[15].init(parentHandle, 2 * textWidth, 9, textWidth, 1);
+        textBoxes[16].init(parentHandle, 3 * textWidth, 9, textWidth, 1);
+        textBoxes[15].setLabel(-2 * textWidth, 0, "Frequencies (#, min)");
+        
+        textBoxes[17].init(parentHandle, 2 * textWidth, 11, textWidth, 1);
+        textBoxes[18].init(parentHandle, 3 * textWidth, 11, textWidth, 1);
+        textBoxes[19].init(parentHandle, 4 * textWidth, 11, 1, 1);
+        textBoxes[19].setMaxCharacters(2);
+        textBoxes[17].setLabel(-2 * textWidth, 0, "T filter (t0, width, ord.)");
         filePaths[0].init(parentHandle, 0, 5, 11, 1);
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
