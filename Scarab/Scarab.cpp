@@ -28,6 +28,7 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void handleSave();
 void handleReferenceA();
 void handleReferenceB();
+void handleResetController();
 void svgCallback();
 
 double modSquared(const std::complex<double>& x){
@@ -278,6 +279,10 @@ public:
         return &data.data()[offset * spectrumSize];
     }
 
+    std::vector<double>& getDataVector() {
+        return data;
+    }
+
     void save(std::string& path, bool timestamp) {
         if (!hasData) return;
         if (timestamp) {
@@ -321,7 +326,13 @@ class spectralInterferometry {
     std::vector<double> referenceDataAInterpolated;
     std::vector<double> referenceDataB;
     std::vector<double> referenceDataBInterpolated;
+
     std::vector<double> spectralPhase;
+    std::vector<double> spectralPhaseMean;
+    std::vector<double> spectralPhaseM2;
+    size_t phaseCount = 0;
+
+
     std::vector<std::complex<double>> fftData;
     std::vector<std::complex<double>> fftReferenceA;
     std::vector<std::complex<double>> fftReferenceB;
@@ -337,8 +348,10 @@ class spectralInterferometry {
     fftw_plan fftPlanD2Z;
     fftw_plan fftPlanZ2D;
     bool hasData = false;
+    bool isConfigured = false;
     double dF = 2e12;
     double minF = 100e12;
+    double maxF = 2e12 * 512 + 100e12;
     double filterT0 = 90;
     double filterWidth = 50;
     double filterOrder = 8;
@@ -393,15 +406,60 @@ class spectralInterferometry {
         fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer.data(), outDataReal.data());
         fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer2.data(), outDataImag.data());
     }
+
+    void updateWithNewPhase() {
+        phaseCount++;
+        for (int i = 0; i < Nfreq; i++) {
+            double delta = spectralPhase[i] - spectralPhaseMean[i];
+            spectralPhaseMean[i] += delta / phaseCount;
+            double delta2 = spectralPhase[i] - spectralPhaseMean[i];
+            spectralPhaseM2[i] += delta * delta2;
+        }
+    }
+
 public:
     spectralInterferometry() {
         setupFFT();
-        generatePlayData();
-        fftPlayData();
-        calculatePhase();
     }
     ~spectralInterferometry() {
         destroyFFT();
+    }
+    void resetFrequencies(size_t N, double fMin, double fMax) {
+        if (N < 2) return;
+        if (frequencies.size() == N && minF == fMin && maxF == maxF) return;
+        frequencies = std::vector<double>(N);
+        dF = (fMax - fMin) / (N - 1);
+        Nfreq = N;
+        for (int i = 0; i < N; i++) {
+            frequencies[i] = fMin + static_cast<double>(i) * dF;
+        }
+        if (FFTsize != Nfreq) {
+            destroyFFT();
+            setupFFT();
+        }
+        if (referenceDataA.size() > 0) {
+            referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
+        }
+        if (referenceDataB.size() > 0) {
+            referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
+        }
+
+        interferenceData = std::vector<double>(wavelengths);
+        interferenceDataInterpolated = std::vector<double>(Nfreq, 0.0);
+        spectralPhase = std::vector<double>(Nfreq, 0.0);
+        spectralPhaseMean = spectralPhase;
+        spectralPhaseM2 = spectralPhase;
+        phaseCount = 0;
+        isConfigured = true;
+    }
+
+    void acquireNewPhase(OceanSpectrometer& s) {
+        interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
+        calculatePhase();
+        updateWithNewPhase();
+    }
+    void acquireNewInterferogram(OceanSpectrometer& s) {
+        interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
     }
     void calculatePhase() {
         for (int i = 0; i < Nfreq; i++) {
@@ -416,6 +474,9 @@ public:
     }
     double* getPhaseData() {
         return spectralPhase.data();
+    }
+    double* getMeanPhaseData() {
+        return spectralPhaseMean.data();
     }
     double* getFrequencies() {
         return frequencies.data();
@@ -435,6 +496,12 @@ public:
     double* getReferenceB() {
         return referenceDataBInterpolated.data();
     }
+    std::vector<double>& getReferenceAVector() {
+        return referenceDataAInterpolated;
+    }
+    std::vector<double>& getReferenceBVector() {
+        return referenceDataBInterpolated;
+    }
 
     double* getTimeData() {
         return fftDataReal.data();
@@ -453,75 +520,19 @@ public:
     double* getTimeFilter() {
         return timeFilter.data();
     }
-    void generatePlayData() {
-        frequencies = std::vector<double> (Nfreq, 0.0);
-        interferenceDataInterpolated = frequencies;
-        wavelengthsOnFrequencyGrid = frequencies;
-        referenceDataAInterpolated = frequencies;
-        referenceDataBInterpolated = frequencies;
-        double f0A = 490e12;
-        double f0B = 400e12;
-        double sigA = 140e12;
-        double sigB = 160e12;
-        double delayB = 80e-15;
-        double chirpB = 30e-30;
-        for (int i = 0; i < Nfreq; i++) {
-            frequencies[i] = minF + static_cast<double>(i) * dF;
-            wavelengthsOnFrequencyGrid[i] = lightC<double>() / frequencies[i];
-            std::complex<double> A = std::exp(-std::pow((frequencies[i] - f0A) / sigA, 8) / sqrt(2.0));
-            double w = twoPi<double>() * (frequencies[i] - f0B);
-            double phase = w * delayB + 0.5 * w * w * chirpB;
-            std::complex<double> B = 1.1*std::exp(-std::pow((frequencies[i] - f0B) / sigB, 8) / sqrt(2.0) + std::complex<double>(0.0, 1.0) * phase);
-            referenceDataAInterpolated[i] = modSquared(A);
-            referenceDataBInterpolated[i] = modSquared(B);
-            interferenceDataInterpolated[i] = modSquared(A + B);
-            frequencies[i] *= 1e-12;
-        }
+    bool checkConfigurationStatus() {
+        return isConfigured;
     }
-
-    void fftPlayData(){
-        std::vector<double>dataMinusReference = std::vector<double>(Nfreq, 0.0);
-        timeFilter = std::vector<double>(Nfreq/2+1, 0.0);
-        fftData = std::vector<std::complex<double>>(Nfreq/2+1, std::complex<double>{});
-        fftReferenceA = fftData;
-        fftReferenceB = fftData;
-        fftDataReal = std::vector<double>(Nfreq/2+1, 0.0);
-        fftReferenceAReal = fftDataReal;
-        fftReferenceBReal = fftDataReal;
-        fftScale = std::vector<double>(Nfreq, 0.0);
-
-        for (int i = 0; i < Nfreq; i++) {
-            dataMinusReference[i] = interferenceDataInterpolated[i] - referenceDataBInterpolated[i] - referenceDataAInterpolated[i];
-        }
-
-        fftw_execute_dft_r2c(fftPlanD2Z, dataMinusReference.data(), (fftw_complex*)fftData.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataBInterpolated.data(), (fftw_complex*)fftReferenceB.data());
-
-        double maxData = 0.0;
-        for (int i = 0; i < Nfreq / 2 + 1; i++) {
-            fftScale[i] = 1e15*static_cast<double>(i) / (dF * Nfreq);
-            fftDataReal[i] = std::abs(fftData[i]);
-            maxData = maxN(fftDataReal[i], maxData);
-            fftReferenceAReal[i] = std::abs(fftReferenceA[i]);
-            fftReferenceBReal[i] = std::abs(fftReferenceB[i]);
-            timeFilter[i] = std::exp(-std::pow((fftScale[i] - filterT0) / filterWidth, filterOrder) / sqrt(2.0));
-        }
-
-        for (int i = 0; i < Nfreq / 2 + 1; i++) {
-            timeFilter[i] *= maxData;
-        }
-    }
-
     void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
         referenceDataA = std::vector<double>(wavelengths.size(), 0.0);
         double normFactor = 1.0 / static_cast<double>(N);
+        std::vector<double> fullSet = batchControl.getDataVector();
         for (int i = 0; i < wavelengths.size(); i++) {
             for (int j = 0; j < N; j++) {
-                referenceDataA[i] += batchControl.getData(j)[i];
+                referenceDataA[i] += fullSet[i + wavelengths.size() * j];
             }
             referenceDataA[i] *= normFactor;
         }
@@ -534,9 +545,10 @@ public:
         wavelengths = s.wavelengthsCopy();
         referenceDataB = std::vector<double>(wavelengths.size(), 0.0);
         double normFactor = 1.0 / static_cast<double>(N);
+        std::vector<double> fullSet = batchControl.getDataVector();
         for (int i = 0; i < wavelengths.size(); i++) {
             for (int j = 0; j < N; j++) {
-                referenceDataB[i] += batchControl.getData(j)[i];
+                referenceDataB[i] +=fullSet[i + j *wavelengths.size()];
             }
             referenceDataB[i] *= normFactor;
         }
@@ -656,7 +668,7 @@ public:
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleReferenceA);
         buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleReferenceB);
         buttons[11].init(("Run"), parentHandle, 0, 13, buttonWidth, 1, handleRunButton);
-        buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleRunButton);
+        buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleResetController);
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -864,11 +876,19 @@ void referenceAAcquisitionThread(int activeSpectrometer, size_t N, double integr
     theInterferenceController.acquireReferenceA(theBatch, N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
 }
 
+void referenceBAcquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait) {
+    theInterferenceController.acquireReferenceB(theBatch, N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
+}
+
 void configureSIFrequencies() {
 
 }
 
 void handleReferenceA() {
+    if (!theInterferenceController.checkConfigurationStatus()) {
+        theGui.console.cPrint("Reset controller with frequencies first.\n");
+        return;
+    }
     theGui.stopLive();
     int activeSpectrometer = theGui.pulldowns[0].getValue();
     if (spectrometerSet[activeSpectrometer].checkLock()) return;
@@ -879,13 +899,34 @@ void handleReferenceA() {
 }
 
 void handleReferenceB() {
+    if (!theInterferenceController.checkConfigurationStatus()) {
+        theGui.console.cPrint("Reset controller with frequencies first.\n");
+        return;
+    }
     theGui.stopLive();
     int activeSpectrometer = theGui.pulldowns[0].getValue();
     if (spectrometerSet[activeSpectrometer].checkLock()) return;
     size_t N = (size_t)theGui.textBoxes[14].valueDouble();
     double integrationTime = theGui.textBoxes[0].valueDouble();
     double waitTime = theGui.textBoxes[13].valueDouble();
-    std::thread(referenceAAcquisitionThread, activeSpectrometer, N, integrationTime, waitTime).detach();
+    std::thread(referenceBAcquisitionThread, activeSpectrometer, N, integrationTime, waitTime).detach();
+}
+
+void handleResetController() {
+    size_t Nfreq = static_cast<size_t>(theGui.textBoxes[15].valueDouble());
+    if (Nfreq < 2) return;
+    double fMin = theGui.textBoxes[16].valueDouble();
+    double fMax = theGui.textBoxes[17].valueDouble();
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (fMax == 0.0) {
+        fMax = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
+        fMax = 1e-3 * lightC<double>() / fMax;
+    }
+    if (fMin == 0.0) {
+        fMin = spectrometerSet[activeSpectrometer].wavelengths()[0];
+        fMin = 1e-3 * lightC<double>() / fMin;
+    }
+    theInterferenceController.resetFrequencies(Nfreq, fMin, fMax);
 }
 
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1149,6 +1190,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 }
 
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (!theInterferenceController.checkConfigurationStatus()) handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1200,6 +1242,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
         overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
     }
 
+    theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataX = theInterferenceController.getFrequencies();
@@ -1223,9 +1266,16 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    sPlot.data2 = theInterferenceController.getReferenceA();
-    sPlot.data3 = theInterferenceController.getReferenceB();
-    sPlot.ExtraLines = 2;
+    sPlot.ExtraLines = 0;
+    if (theInterferenceController.getReferenceAVector().size() == theInterferenceController.getNfreq()) {
+        sPlot.data2 = theInterferenceController.getReferenceA();
+        sPlot.ExtraLines = 1;
+        if (theInterferenceController.getReferenceBVector().size() == theInterferenceController.getNfreq()) {
+            sPlot.data3 = theInterferenceController.getReferenceB();
+            sPlot.ExtraLines = 2;
+        }
+    }
+
     sPlot.plot(cr);
 }
 
