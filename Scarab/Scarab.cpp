@@ -26,6 +26,8 @@ void handleDeleteDarkSpectrum();
 void handleRefreshRequest();
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void handleSave();
+void handleReferenceA();
+void handleReferenceB();
 void svgCallback();
 
 double modSquared(const std::complex<double>& x){
@@ -240,6 +242,75 @@ public:
 };
 std::vector<OceanSpectrometer> spectrometerSet;
 
+//Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
+//to acquire and save the data
+class batchAcquisition {
+    std::vector<double> data;
+    std::vector<double> wavelengths;
+    bool hasData = false;
+    bool acquisitionFinished = false;
+    size_t spectrumSize = 0;
+    size_t acquisitionCount = 0;
+public:
+
+    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+        if (N == 0) return;
+        s.lock();
+        spectrumSize = s.size();
+        wavelengths = s.wavelengthsCopy();
+        data.clear();
+        data.reserve(N * spectrumSize);
+        acquisitionCount = 0;
+        acquisitionFinished = false;
+        s.setIntegrationTime((unsigned long)round(1000 * integrationTime));
+        for (size_t i = 0; i < N; i++) {
+            s.acquireSingle();
+            s.appendBufferTo(data);
+            acquisitionCount++;
+            std::this_thread::sleep_for(std::chrono::milliseconds((size_t)(1000.0 * secondsToWait)));
+            hasData = true;
+        }
+        acquisitionFinished = true;
+        s.unlock();
+    }
+
+    double* getData(size_t offset) {
+        return &data.data()[offset * spectrumSize];
+    }
+
+    void save(std::string& path, bool timestamp) {
+        if (!hasData) return;
+        if (timestamp) {
+            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            size_t lastPeriod = path.find_last_of(".");
+            //if the extension is weird or absent, just put timestamp at end
+            if (lastPeriod == std::string::npos || (path.length() - lastPeriod) > 6) {
+                path.append(Sformat("{}", timestamp));
+            }
+            else {
+                path.insert(lastPeriod, Sformat("{}", timestamp));
+            }
+        }
+        std::ofstream fs(path, std::ios::binary);
+        if (fs.fail()) return;
+        fs.precision(10);
+        for (size_t j = 0; j < spectrumSize; j++) {
+            fs << wavelengths[j];
+            for (size_t i = 0; i < acquisitionCount; i++) {
+                fs << " ";
+                fs << data[i * spectrumSize + j];
+            }
+            fs << '\x0A';
+        }
+
+    }
+
+    size_t getSpectrumSize() {
+        return spectrumSize;
+    }
+};
+batchAcquisition theBatch;
+
 class spectralInterferometry {
     std::vector<double> wavelengths;
     std::vector<double> frequencies;
@@ -440,79 +511,41 @@ public:
         for (int i = 0; i < Nfreq / 2 + 1; i++) {
             timeFilter[i] *= maxData;
         }
+    }
 
+    void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+        if (N == 0) return;
+        batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
+        wavelengths = s.wavelengthsCopy();
+        referenceDataA = std::vector<double>(wavelengths.size(), 0.0);
+        double normFactor = 1.0 / static_cast<double>(N);
+        for (int i = 0; i < wavelengths.size(); i++) {
+            for (int j = 0; j < N; j++) {
+                referenceDataA[i] += batchControl.getData(j)[i];
+            }
+            referenceDataA[i] *= normFactor;
+        }
+        referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
+    }
 
+    void acquireReferenceB(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+        if (N == 0) return;
+        batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
+        wavelengths = s.wavelengthsCopy();
+        referenceDataB = std::vector<double>(wavelengths.size(), 0.0);
+        double normFactor = 1.0 / static_cast<double>(N);
+        for (int i = 0; i < wavelengths.size(); i++) {
+            for (int j = 0; j < N; j++) {
+                referenceDataB[i] += batchControl.getData(j)[i];
+            }
+            referenceDataB[i] *= normFactor;
+        }
+        referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
     }
 };
 spectralInterferometry theInterferenceController;
-//Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
-//to acquire and save the data
-class batchAcquisition {
-    std::vector<double> data;
-    std::vector<double> wavelengths;
-    bool hasData = false;
-    bool acquisitionFinished = false;
-    size_t spectrumSize = 0;
-    size_t acquisitionCount = 0;
-public:
 
-    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
-        if (N == 0) return;
-        s.lock();
-        spectrumSize = s.size();
-        wavelengths = s.wavelengthsCopy();
-        data.clear();
-        data.reserve(N * spectrumSize);
-        acquisitionCount = 0;
-        acquisitionFinished = false;
-        s.setIntegrationTime((unsigned long)round(1000 * integrationTime));
-        for (size_t i = 0; i < N; i++) {
-            s.acquireSingle();
-            s.appendBufferTo(data);
-            acquisitionCount++;
-            std::this_thread::sleep_for(std::chrono::milliseconds((size_t)(1000.0 * secondsToWait)));
-            hasData = true;
-        }
-        acquisitionFinished = true;
-        s.unlock();
-    }
 
-    double* getData(size_t offset) {
-        return &data.data()[offset * spectrumSize];
-    }
-
-    void save(std::string& path, bool timestamp) {
-        if (!hasData) return;
-        if (timestamp) {
-            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            size_t lastPeriod = path.find_last_of(".");
-            //if the extension is weird or absent, just put timestamp at end
-            if (lastPeriod == std::string::npos || (path.length() - lastPeriod) > 6) {
-                path.append(Sformat("{}", timestamp));
-            }
-            else {
-                path.insert(lastPeriod, Sformat("{}", timestamp));
-            }
-        }
-        std::ofstream fs(path, std::ios::binary);
-        if (fs.fail()) return;
-        fs.precision(10);
-        for (size_t j = 0; j < spectrumSize; j++) {
-            fs << wavelengths[j];
-            for (size_t i = 0; i < acquisitionCount; i++) {
-                fs << " ";
-                fs << data[i * spectrumSize + j];
-            }
-            fs << '\x0A';
-        }
-
-    }
-
-    size_t getSpectrumSize() {
-        return spectrumSize;
-    }
-};
-batchAcquisition theBatch;
 
 //Main class for controlling the interface
 class mainGui {
@@ -620,8 +653,8 @@ public:
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
         
-        buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleRunButton);
-        buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleRunButton);
+        buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleReferenceA);
+        buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleReferenceB);
         buttons[11].init(("Run"), parentHandle, 0, 13, buttonWidth, 1, handleRunButton);
         buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleRunButton);
         //RGB active
@@ -824,6 +857,35 @@ void handleSave() {
     double integrationTime = theGui.textBoxes[0].valueDouble();
     double waitTime = theGui.textBoxes[13].valueDouble();
     std::thread(acquisitionThread, activeSpectrometer, N, integrationTime, waitTime, path, timestamp).detach();
+}
+
+
+void referenceAAcquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait) {
+    theInterferenceController.acquireReferenceA(theBatch, N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
+}
+
+void configureSIFrequencies() {
+
+}
+
+void handleReferenceA() {
+    theGui.stopLive();
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (spectrometerSet[activeSpectrometer].checkLock()) return;
+    size_t N = (size_t)theGui.textBoxes[14].valueDouble();
+    double integrationTime = theGui.textBoxes[0].valueDouble();
+    double waitTime = theGui.textBoxes[13].valueDouble();
+    std::thread(referenceAAcquisitionThread, activeSpectrometer, N, integrationTime, waitTime).detach();
+}
+
+void handleReferenceB() {
+    theGui.stopLive();
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (spectrometerSet[activeSpectrometer].checkLock()) return;
+    size_t N = (size_t)theGui.textBoxes[14].valueDouble();
+    double integrationTime = theGui.textBoxes[0].valueDouble();
+    double waitTime = theGui.textBoxes[13].valueDouble();
+    std::thread(referenceAAcquisitionThread, activeSpectrometer, N, integrationTime, waitTime).detach();
 }
 
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
