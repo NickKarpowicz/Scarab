@@ -15,6 +15,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void handleGetOverlay0();
 void handleGetOverlay1();
 void handleGetOverlay2();
@@ -357,6 +358,7 @@ class spectralInterferometry {
     std::vector<double> spectralPhase;
     std::vector<double> spectralPhaseMean;
     std::vector<double> spectralPhaseM2;
+    std::vector<double> groupDelay;
     size_t phaseCount = 0;
 
 
@@ -386,7 +388,6 @@ class spectralInterferometry {
     size_t FFTsize = 0;
     void unwrap(std::vector<double>& phaseInOut) {
         double offset{};
-
         for (int i = 1; i < Nfreq; i++) {
             double delta = phaseInOut[i] - phaseInOut[i - 1];
             delta -= twoPi<double>() * round(delta / twoPi<double>());
@@ -411,6 +412,7 @@ class spectralInterferometry {
         fftReferenceAReal = timeFilter;
         fftReferenceBReal = timeFilter;
         fftDataReal = timeFilter;
+        
     }
     void destroyFFT() {
         fftw_destroy_plan(fftPlanD2Z);
@@ -450,6 +452,14 @@ class spectralInterferometry {
             spectralPhaseM2[i] += delta * delta2;
         }
     }
+    void calculateGroupDelay() {
+        double dwFactor = 0.5/(dF * twoPi<double>());
+        groupDelay[0] = 2 * dwFactor * (spectralPhase[1] - spectralPhase[0]);
+        for (int i = 1; i < Nfreq-1; i++) {
+            groupDelay[i] = dwFactor * (spectralPhase[i + 1] - spectralPhase[i - 1]);
+        }
+        groupDelay[Nfreq - 1] = 2 * dwFactor * (spectralPhase[Nfreq - 1] - spectralPhase[Nfreq - 2]);
+    }
 
 public:
     spectralInterferometry() {
@@ -483,6 +493,7 @@ public:
         spectralPhase = std::vector<double>(Nfreq, 0.0);
         spectralPhaseMean = spectralPhase;
         spectralPhaseM2 = spectralPhase;
+        groupDelay = spectralPhase;
         phaseCount = 0;
         isConfigured = true;
     }
@@ -491,7 +502,9 @@ public:
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
         calculatePhase();
         updateWithNewPhase();
+        calculateGroupDelay();
     }
+
     void acquireNewInterferogram(OceanSpectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
     }
@@ -511,6 +524,9 @@ public:
     }
     double* getMeanPhaseData() {
         return spectralPhaseMean.data();
+    }
+    double* getGroupDelayData() {
+        return groupDelay.data();
     }
     double* getFrequencies() {
         return frequencies.data();
@@ -809,6 +825,7 @@ public:
         pulldowns[1].addElement("Interferometry: Spectrum");
         pulldowns[1].addElement("Interferometry: Time");
         pulldowns[1].addElement("Interferometry: phase");
+        pulldowns[1].addElement("Interferometry: Group delay");
         pulldowns[1].init(parentHandle, 0, 1, 8, 1);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
@@ -1012,6 +1029,8 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     case 4:
         drawInterferencePhase(area, cr, width, height, data);
         return;
+    case 5:
+        drawInterferenceGroupDelay(area, cr, width, height, data);
     default:
         return;
     }
@@ -1442,6 +1461,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
     sPlot.plot(cr);
 }
 
+
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1517,6 +1537,90 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Phase (rad)";
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    sPlot.markers = false;
+    sPlot.ExtraLines = 0;
+    sPlot.plot(cr);
+}
+
+void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    LwePlot sPlot;
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
+    }
+    bool logPlot = false;
+    if (theGui.checkBoxes[1].isChecked()) {
+        logPlot = true;
+
+    }
+
+    bool forceX = false;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = true;
+    }
+    bool forceY = false;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = true;
+    }
+
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[0].copyBuffer(svgPath);
+        svgPath.append("_InterferencePhase.svg");
+        sPlot.SVGPath = svgPath;
+    }
+
+    LweColor mainColor(0.5, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
+        mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
+    }
+
+    LweColor overLay0Color(1, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[4].valueDouble() + theGui.textBoxes[5].valueDouble() + theGui.textBoxes[6].valueDouble())) {
+        overLay0Color = LweColor(theGui.textBoxes[4].valueDouble(), theGui.textBoxes[5].valueDouble(), theGui.textBoxes[6].valueDouble(), 1);
+    }
+
+    LweColor overLay1Color(1, 0.5, 0, 1);
+    if (0.0 != (theGui.textBoxes[7].valueDouble() + theGui.textBoxes[8].valueDouble() + theGui.textBoxes[9].valueDouble())) {
+        overLay1Color = LweColor(theGui.textBoxes[7].valueDouble(), theGui.textBoxes[8].valueDouble(), theGui.textBoxes[9].valueDouble(), 1);
+    }
+
+    LweColor overLay2Color(0, 1, 1, 1);
+    if (0.0 != (theGui.textBoxes[10].valueDouble() + theGui.textBoxes[11].valueDouble() + theGui.textBoxes[12].valueDouble())) {
+        overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
+    }
+
+    if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
+        spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.acquireNewPhase(spectrometerSet[theGui.pulldowns[0].getValue()]);
+    }
+
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataX = theInterferenceController.getFrequencies();
+    sPlot.hasDataX = true;
+    sPlot.data = theInterferenceController.getGroupDelayData();
+    sPlot.Npts = theInterferenceController.getNfreq();
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = forceY;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = mainColor;
+    sPlot.color2 = overLay0Color;
+    sPlot.color3 = overLay1Color;
+    sPlot.color4 = overLay2Color;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Group delay (ps)";
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
