@@ -11,6 +11,7 @@ void destroyMainWindowCallback();
 bool updateDisplay();
 void handleRunButton();
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -30,6 +31,28 @@ void svgCallback();
 double modSquared(const std::complex<double>& x){
     return x.real() * x.real() + x.imag() * x.imag();
 }
+
+std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
+{
+    std::vector<double> spectrumOut(frequencies.size());
+    //lambda for performing single point interpolation
+    auto interpolateSingle = [&](double targetFrequency) {
+        double targetWavelength = constProd(lightC<double>(),1e-3) / targetFrequency;
+        if (targetWavelength < wavelengths[0] || targetWavelength > wavelengths[wavelengths.size() - 1]) {
+            return 0.0;
+        }
+        // Find the indetargetWavelength i such that wavelengths[i] <= targetWavelength <= wavelengths[i+1]
+        size_t i = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), targetWavelength)) - 1;
+        return (1e-6*targetWavelength*targetWavelength)*(spectrumIn[i - 1] + (spectrumIn[i] - spectrumIn[i - 1]) / (wavelengths[i] - wavelengths[i - 1]) * (targetWavelength - wavelengths[i - 1]));
+    };
+
+    for (size_t j = 0; j < frequencies.size(); j++) {
+        spectrumOut[j] = interpolateSingle(frequencies[j]);
+    }
+    return spectrumOut;
+}
+
+
 //Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
 //buffers for the data and overlays
 class OceanSpectrometer {
@@ -97,6 +120,12 @@ public:
     void acquireSingle() {
         odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
         subtractDark(readBuffer, readBufferMinusDark);
+    }
+
+    std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) {
+        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
+        subtractDark(readBuffer, readBufferMinusDark);
+        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
     }
 
     void lock() {
@@ -254,13 +283,11 @@ class spectralInterferometry {
         }
     }
     void setupFFT() {
-        double* setupWorkD = new double[Nfreq];
-        std::complex<double>* setupWorkC = new std::complex<double>[Nfreq];
-        const int fftw1[1] = { Nfreq };
-        fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD, fftw1, 1, Nfreq, (fftw_complex*)setupWorkC, fftw1, 1, Nfreq/2+1, FFTW_MEASURE);
-        fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC, fftw1, 1, Nfreq/2+1, setupWorkD, fftw1, 1, Nfreq, FFTW_MEASURE);
-        delete[] setupWorkD;
-        delete[] setupWorkC;
+        std::unique_ptr<double[]> setupWorkD(new double[Nfreq]);
+        std::unique_ptr<std::complex<double>[]> setupWorkC(new std::complex<double>[Nfreq]);
+        const int fftw1[1] = { static_cast<int>(Nfreq) };
+        fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), FFTW_MEASURE);
+        fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), FFTW_MEASURE);
         FFTsize = Nfreq;
         hilbertTimeBuffer = std::vector<std::complex<double>>(Nfreq/2 + 1);
         hilbertTimeBuffer2 = hilbertTimeBuffer;
@@ -551,19 +578,21 @@ public:
 
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
-        int textWidth = 3;
+        int textWidth = 2;
         int labelWidth = 2;
         int plotWidth = 12;
         int plotHeight = 6;
         int pathChars = 45;
         int colWidth = labelWidth + 2 * textWidth;
-        int textCol1a = labelWidth;
-        int textCol2a = textCol1a + 2 * textWidth + labelWidth;
-        int textCol1b = textCol1a + textWidth;
-        int textCol2b = textCol2a + textWidth;
-        int buttonCol1 = 3*textWidth;
-        int buttonCol2 = buttonCol1 + buttonWidth;
-        int buttonCol3 = buttonCol2 + buttonWidth;
+        int textCol0 = 0;
+        int textCol1 = textWidth;
+        int textCol2 = 2 * textWidth;
+        int textCol3 = 3 * textWidth;
+        int textCol4 = 4 * textWidth;
+        int textCol5 = 5 * textWidth;
+        int textCol6 = 6 * textWidth;
+        int buttonCol1 = 9;
+
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         window.init(app, "Spectrometer Control and Recording for Attosecond Beamlines", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
@@ -580,64 +609,70 @@ public:
 
 
         buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
-        buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 2, buttonWidth/2, 1, handleGetOverlay0);
-        buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth / 2, 1, handleGetOverlay1);
-        buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay2);
-        buttons[3].init(("Acquire"), parentHandle, buttonCol1, 8, buttonWidth, 1, handleSave);
+        buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
+        buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay1);
+        buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handleGetOverlay2);
+        buttons[3].init(("Acquire"), parentHandle, buttonCol1, 7, buttonWidth, 1, handleSave);
 
-        buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 2, buttonWidth / 2, 1, handleDeleteOverlay0);
-        buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay1);
-        buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay2);
-        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 7, buttonWidth / 2, 1, handleGetDarkSpectrum);
-        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 7, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
+        buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay0);
+        buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay1);
+        buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
+        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
+        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
         
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleRunButton);
         buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleRunButton);
         buttons[11].init(("Run"), parentHandle, 0, 13, buttonWidth, 1, handleRunButton);
         buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleRunButton);
         //RGB active
-        textBoxes[1].init(parentHandle, 0, 1, textWidth, 1);
-        textBoxes[2].init(parentHandle, textWidth, 1, textWidth, 1);
-        textBoxes[3].init(parentHandle, 2*textWidth, 1, textWidth, 1);
+        textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
+        textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
+        textBoxes[3].init(parentHandle, textCol3, 2, textWidth, 1);
 
         //RGB overlay0
-        textBoxes[4].init(parentHandle, 0, 2, textWidth, 1);
-        textBoxes[5].init(parentHandle, textWidth, 2, textWidth, 1);
-        textBoxes[6].init(parentHandle, 2 * textWidth, 2, textWidth, 1);
+        textBoxes[4].init(parentHandle, textCol1, 3, textWidth, 1);
+        textBoxes[5].init(parentHandle, textCol2, 3, textWidth, 1);
+        textBoxes[6].init(parentHandle, textCol3, 3, textWidth, 1);
 
         //RGB overlay1
-        textBoxes[7].init(parentHandle, 0, 3, textWidth, 1);
-        textBoxes[8].init(parentHandle, textWidth, 3, textWidth, 1);
-        textBoxes[9].init(parentHandle, 2 * textWidth, 3, textWidth, 1);
+        textBoxes[7].init(parentHandle, textCol1, 4, textWidth, 1);
+        textBoxes[8].init(parentHandle, textCol2, 4, textWidth, 1);
+        textBoxes[9].init(parentHandle, textCol3, 4, textWidth, 1);
 
         //RGB overlay2
-        textBoxes[10].init(parentHandle, 0, 4, textWidth, 1);
-        textBoxes[11].init(parentHandle, textWidth, 4, textWidth, 1);
-        textBoxes[12].init(parentHandle, 2 * textWidth, 4, textWidth, 1);
+        textBoxes[10].init(parentHandle, textCol1, 5, textWidth, 1);
+        textBoxes[11].init(parentHandle, textCol2, 5, textWidth, 1);
+        textBoxes[12].init(parentHandle, textCol3, 5, textWidth, 1);
 
-        textBoxes[0].init(parentHandle, 2 * textWidth, 6, textWidth, 1);
-        textBoxes[0].setLabel(-2 * textWidth, 0, "Exposure (ms)");
+        textBoxes[0].init(parentHandle, textCol3, 7, textWidth, 1);
+        textBoxes[0].setLabel(-3 * textWidth, 0, "Exposure (ms)");
 
-        textBoxes[13].init(parentHandle, 2 * textWidth, 7, textWidth, 1);
-        textBoxes[13].setLabel(-2 * textWidth, 0, "Pause (s)");
+        textBoxes[13].init(parentHandle, textCol3, 8, textWidth, 1);
+        textBoxes[13].setLabel(-3 * textWidth, 0, "Pause, count (s, #)");
 
-        textBoxes[14].init(parentHandle, 2 * textWidth, 8, textWidth, 1);
-        textBoxes[14].setLabel(-2 * textWidth, 0, "Acquisition #");
+        textBoxes[14].init(parentHandle, textCol4, 8, textWidth, 1);
+   
 
-        textBoxes[15].init(parentHandle, 2 * textWidth, 9, textWidth, 1);
-        textBoxes[16].init(parentHandle, 3 * textWidth, 9, textWidth, 1);
-        textBoxes[15].setLabel(-2 * textWidth, 0, "Frequencies (#, min)");
+        textBoxes[15].init(parentHandle, textCol3, 9, 2, 1);
+        textBoxes[15].setMaxCharacters(6);
+        textBoxes[16].init(parentHandle, textCol4, 9, 2, 1);
+        textBoxes[16].setMaxCharacters(6);
+        textBoxes[17].init(parentHandle, textCol5, 9, 2, 1);
+        textBoxes[17].setMaxCharacters(6);
+        textBoxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
         
-        textBoxes[17].init(parentHandle, 2 * textWidth, 11, textWidth, 1);
-        textBoxes[18].init(parentHandle, 3 * textWidth, 11, textWidth, 1);
-        textBoxes[19].init(parentHandle, 4 * textWidth, 11, 1, 1);
-        textBoxes[19].setMaxCharacters(2);
-        textBoxes[17].setLabel(-2 * textWidth, 0, "T filter (t0, width, ord.)");
-        filePaths[0].init(parentHandle, 0, 5, 11, 1);
+        textBoxes[18].init(parentHandle, textCol3, 11, 2, 1);
+        textBoxes[18].setMaxCharacters(6);
+        textBoxes[19].init(parentHandle, textCol4, 11, 2, 1);
+        textBoxes[19].setMaxCharacters(6);
+        textBoxes[20].init(parentHandle, textCol5, 11, 2, 1);
+        textBoxes[20].setMaxCharacters(6);
+        textBoxes[18].setLabel(-3 * textWidth, 0, "Filter (t0, sig., ord.)");
+        filePaths[0].init(parentHandle, 0, 6, 11, 1);
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
-        checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 6, 2, 1);
-        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 5, buttonWidth / 2, 1, saveFileDialogCallback, 0);
+        checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
+        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, saveFileDialogCallback, 0);
         textBoxes[48].init(window.parentHandle(4), 2, 0, 2, 1);
         textBoxes[49].init(window.parentHandle(4), 4, 0, 2, 1);
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
@@ -654,12 +689,15 @@ public:
         buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
         buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
         buttons[12].squeeze();
-        
-        pulldowns[1].addElement("Spectrometer live");
+        for (int i = 0; i < 18; i++) {
+            textBoxes[i].setMaxCharacters(6);
+        }
+        pulldowns[1].addElement("Spectrometer live (nm)");
+        pulldowns[1].addElement("Spectrometer live (THz)");
         pulldowns[1].addElement("Interferometry: Spectrum");
         pulldowns[1].addElement("Interferometry: Time");
         pulldowns[1].addElement("Interferometry: phase");
-        pulldowns[1].init(parentHandle, 0, 10, 10, 1);
+        pulldowns[1].init(parentHandle, 0, 1, 8, 1);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
         
@@ -793,12 +831,15 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     case 0:
         break;
     case 1:
-        drawInterferenceSpectrum(area, cr, width, height, data);
+        drawSpectrumFrequency(area, cr, width, height, data);
         return;
     case 2:
-        drawInterferenceSpectrumTime(area, cr, width, height, data);
+        drawInterferenceSpectrum(area, cr, width, height, data);
         return;
     case 3:
+        drawInterferenceSpectrumTime(area, cr, width, height, data);
+        return;
+    case 4:
         drawInterferencePhase(area, cr, width, height, data);
         return;
     default:
@@ -909,6 +950,137 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(1);
         else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(2);
        
+        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlay(2);
+    }
+    sPlot.plot(cr);
+}
+
+void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+
+    if (theGui.noSpectrometersFound()) return;
+    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    if (!spectrometerSet[activeSpectrometer].initialized()) {
+        theGui.console.cPrint("Not initialized - error {}\n", spectrometerSet[0].getErrorCode());
+        return;
+    }
+
+    LwePlot sPlot;
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
+    }
+    bool logPlot = false;
+    if (theGui.checkBoxes[1].isChecked()) {
+        logPlot = true;
+
+    }
+
+    bool forceX = false;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = true;
+    }
+    bool forceY = false;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = true;
+    }
+
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[0].copyBuffer(svgPath);
+        svgPath.append("_SpectrumTHz.svg");
+        sPlot.SVGPath = svgPath;
+    }
+    size_t Nfreq = static_cast<size_t>(theGui.textBoxes[15].valueDouble());
+    if (Nfreq < 2) return;
+    double fMin = theGui.textBoxes[16].valueDouble();
+    double fMax = theGui.textBoxes[17].valueDouble();
+
+    if (fMax == 0.0) {
+        fMax = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
+        fMax = 1e-3 * lightC<double>() / fMax;
+    }
+    if (fMin == 0.0) {
+        fMin = spectrometerSet[activeSpectrometer].wavelengths()[0];
+        fMin = 1e-3 * lightC<double>() / fMin;
+    }
+    double dF = (fMax - fMin) / static_cast<double>(Nfreq - 1);
+    std::vector<double> frequencies(Nfreq);
+    for (size_t i = 0; i < Nfreq; i++) {
+        frequencies[i] = fMin + static_cast<double>(i) * dF;
+    }
+    std::vector<double> liveSpectrum;
+    if (theGui.runningLive() && !spectrometerSet[activeSpectrometer].checkLock() && Nfreq > 0) {
+        spectrometerSet[activeSpectrometer].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        liveSpectrum = spectrometerSet[activeSpectrometer].acquireSingleFrequency(frequencies);
+    }
+    else return;
+
+    LweColor mainColor(0.5, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
+        mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
+    }
+
+    LweColor overLay0Color(1, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[4].valueDouble() + theGui.textBoxes[5].valueDouble() + theGui.textBoxes[6].valueDouble())) {
+        overLay0Color = LweColor(theGui.textBoxes[4].valueDouble(), theGui.textBoxes[5].valueDouble(), theGui.textBoxes[6].valueDouble(), 1);
+    }
+
+    LweColor overLay1Color(1, 0.5, 0, 1);
+    if (0.0 != (theGui.textBoxes[7].valueDouble() + theGui.textBoxes[8].valueDouble() + theGui.textBoxes[9].valueDouble())) {
+        overLay1Color = LweColor(theGui.textBoxes[7].valueDouble(), theGui.textBoxes[8].valueDouble(), theGui.textBoxes[9].valueDouble(), 1);
+    }
+
+    LweColor overLay2Color(0, 1, 1, 1);
+    if (0.0 != (theGui.textBoxes[10].valueDouble() + theGui.textBoxes[11].valueDouble() + theGui.textBoxes[12].valueDouble())) {
+        overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
+    }
+
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataX = frequencies.data();
+    sPlot.hasDataX = true;
+    sPlot.data = liveSpectrum.data();
+    sPlot.Npts = Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = forceY;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = mainColor;
+    sPlot.color2 = overLay0Color;
+    sPlot.color3 = overLay1Color;
+    sPlot.color4 = overLay2Color;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Spectrum (counts)";
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    sPlot.markers = false;
+    if (spectrometerSet[activeSpectrometer].getOverlayCount() > 0) {
+        int firstAdded = -1;
+        int secondAdded = -1;
+        sPlot.ExtraLines = spectrometerSet[activeSpectrometer].getOverlayCount();
+        if (spectrometerSet[activeSpectrometer].hasOverlay0) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(0);
+            firstAdded = 0;
+        }
+        else if (spectrometerSet[activeSpectrometer].hasOverlay1) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(1);
+            firstAdded = 1;
+        }
+        else if (spectrometerSet[activeSpectrometer].hasOverlay2) {
+            sPlot.data2 = spectrometerSet[activeSpectrometer].getOverlay(2);
+            firstAdded = 2;
+        }
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(1);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlay(2);
+
         if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlay(2);
     }
     sPlot.plot(cr);
