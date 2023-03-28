@@ -41,10 +41,10 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
     //lambda for performing single point interpolation
     auto interpolateSingle = [&](double targetFrequency) {
         double targetWavelength = constProd(lightC<double>(),1e-3) / targetFrequency;
-        if (targetWavelength < wavelengths[0] || targetWavelength > wavelengths[wavelengths.size() - 1]) {
+        if (targetFrequency == 0.0 || targetWavelength < wavelengths[1] || targetWavelength > wavelengths[wavelengths.size() - 1]) {
             return 0.0;
         }
-        // Find the indetargetWavelength i such that wavelengths[i] <= targetWavelength <= wavelengths[i+1]
+        // Find the index i such that wavelengths[i] <= targetWavelength <= wavelengths[i+1]
         size_t i = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), targetWavelength)) - 1;
         return (1e-6*targetWavelength*targetWavelength)*(spectrumIn[i - 1] + (spectrumIn[i] - spectrumIn[i - 1]) / (wavelengths[i] - wavelengths[i - 1]) * (targetWavelength - wavelengths[i - 1]));
     };
@@ -211,12 +211,15 @@ public:
     }
 
     double* data() {
-        if (hasDarkSpectrum) return readBufferMinusDark.data();
-        return readBuffer.data();
+        if (hasDarkSpectrum) { return readBufferMinusDark.data(); }
+        else {
+            return readBuffer.data();
+        }
+        
     }
 
     void appendBufferTo(std::vector<double>& outputBuffer) {
-        if (hasDarkSpectrum) { 
+        if (!hasDarkSpectrum) { 
             outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end()); 
         }
         else {
@@ -377,6 +380,13 @@ class spectralInterferometry {
         hilbertTimeBuffer2 = hilbertTimeBuffer;
         hilbertRealBuffer = std::vector<double>(Nfreq);
         hilbertImagBuffer = hilbertRealBuffer;
+        fftReferenceA = hilbertTimeBuffer;
+        fftReferenceB = hilbertTimeBuffer;
+        timeFilter = std::vector<double>(Nfreq / 2 + 1);
+        fftScale = timeFilter;
+        fftReferenceAReal = timeFilter;
+        fftReferenceBReal = timeFilter;
+        fftDataReal = timeFilter;
     }
     void destroyFFT() {
         fftw_destroy_plan(fftPlanD2Z);
@@ -520,6 +530,33 @@ public:
     double* getTimeFilter() {
         return timeFilter.data();
     }
+    void setTimeFilter(double t0, double sigma, double ord) {
+        filterT0 = t0;
+        filterWidth = sigma;
+        filterOrder = ord;
+    }
+    void generateTimePlot() {
+        fftw_execute_dft_r2c(fftPlanD2Z, interferenceDataInterpolated.data(), (fftw_complex*)hilbertTimeBuffer.data());
+        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
+        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceB.data());
+        double dt = 1.0e3 / (Nfreq * dF);
+        double maxSignal = 0.0;
+        for (int i = 0; i < (Nfreq / 2 + 1); i++) {
+
+            fftReferenceAReal[i] = modSquared(fftReferenceA[i]);
+            fftReferenceBReal[i] = modSquared(fftReferenceB[i]);
+            fftDataReal[i] = modSquared(hilbertTimeBuffer[i] - fftReferenceA[i] - fftReferenceB[i]);
+            maxSignal = maxN(fftDataReal[i], maxSignal);
+            timeFilter[i] = std::exp(-std::pow(
+                (static_cast<double>(i) * dt - filterT0) / filterWidth, filterOrder)
+                / sqrt(2.0));
+            fftScale[i] = static_cast<double>(i) * dt;
+        }
+        for (int i = 0; i < (Nfreq / 2 + 1); i++) {
+            timeFilter[i] *= maxSignal;
+        }
+    }
+
     bool checkConfigurationStatus() {
         return isConfigured;
     }
@@ -666,9 +703,8 @@ public:
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
         
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleReferenceA);
-        buttons[10].init(("Ref. B"), parentHandle, buttonWidth+1, 12, buttonWidth, 1, handleReferenceB);
-        buttons[11].init(("Run"), parentHandle, 0, 13, buttonWidth, 1, handleRunButton);
-        buttons[12].init(("Reset"), parentHandle, buttonWidth+1, 13, buttonWidth, 1, handleResetController);
+        buttons[10].init(("Ref. B"), parentHandle, buttonWidth, 12, buttonWidth, 1, handleReferenceB);
+        buttons[11].init(("FFT setup"), parentHandle, buttonWidth*2, 12, buttonWidth, 1, handleResetController);
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -691,11 +727,13 @@ public:
 
         textBoxes[0].init(parentHandle, textCol3, 7, textWidth, 1);
         textBoxes[0].setLabel(-3 * textWidth, 0, "Exposure (ms)");
+        textBoxes[0].overwritePrint(std::string("40"));
 
         textBoxes[13].init(parentHandle, textCol3, 8, textWidth, 1);
         textBoxes[13].setLabel(-3 * textWidth, 0, "Pause, count (s, #)");
-
         textBoxes[14].init(parentHandle, textCol4, 8, textWidth, 1);
+        textBoxes[13].overwritePrint(std::string("0"));
+        textBoxes[14].overwritePrint(std::string("10"));
    
 
         textBoxes[15].init(parentHandle, textCol3, 9, 2, 1);
@@ -705,6 +743,7 @@ public:
         textBoxes[17].init(parentHandle, textCol5, 9, 2, 1);
         textBoxes[17].setMaxCharacters(6);
         textBoxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
+        textBoxes[15].overwritePrint(std::string("2048"));
         
         textBoxes[18].init(parentHandle, textCol3, 11, 2, 1);
         textBoxes[18].setMaxCharacters(6);
@@ -713,6 +752,10 @@ public:
         textBoxes[20].init(parentHandle, textCol5, 11, 2, 1);
         textBoxes[20].setMaxCharacters(6);
         textBoxes[18].setLabel(-3 * textWidth, 0, "Filter (t0, sig., ord.)");
+        textBoxes[18].overwritePrint(std::string("300"));
+        textBoxes[19].overwritePrint(std::string("80"));
+        textBoxes[20].overwritePrint(std::string("12"));
+
         filePaths[0].init(parentHandle, 0, 6, 11, 1);
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
@@ -919,11 +962,11 @@ void handleResetController() {
     double fMax = theGui.textBoxes[17].valueDouble();
     int activeSpectrometer = theGui.pulldowns[0].getValue();
     if (fMax == 0.0) {
-        fMax = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
+        fMax = spectrometerSet[activeSpectrometer].wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
     }
     if (fMin == 0.0) {
-        fMin = spectrometerSet[activeSpectrometer].wavelengths()[0];
+        fMin = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
     }
     theInterferenceController.resetFrequencies(Nfreq, fMin, fMax);
@@ -1242,7 +1285,12 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
         overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
     }
 
-    theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
+    
+
+    if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
+        spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
+    }
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataX = theInterferenceController.getFrequencies();
@@ -1330,6 +1378,15 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
     if (0.0 != (theGui.textBoxes[10].valueDouble() + theGui.textBoxes[11].valueDouble() + theGui.textBoxes[12].valueDouble())) {
         overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
     }
+    double t0 = theGui.textBoxes[18].valueDouble();
+    double sigma = theGui.textBoxes[19].valueDouble();
+    double ord = theGui.textBoxes[20].valueDouble();
+    if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
+        spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
+    }
+    theInterferenceController.setTimeFilter(t0, sigma, ord);
+    theInterferenceController.generateTimePlot();
 
     sPlot.height = height;
     sPlot.width = width;
@@ -1413,11 +1470,16 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
         overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
     }
 
+    if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
+        spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.acquireNewPhase(spectrometerSet[theGui.pulldowns[0].getValue()]);
+    }
+
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataX = theInterferenceController.getFrequencies();
     sPlot.hasDataX = true;
-    sPlot.data = theInterferenceController.getPhaseData();
+    sPlot.data = theInterferenceController.getMeanPhaseData();
     sPlot.Npts = theInterferenceController.getNfreq();
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
