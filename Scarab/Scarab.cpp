@@ -337,7 +337,6 @@ public:
             }
             fs << '\x0A';
         }
-
     }
 
     size_t getSpectrumSize() {
@@ -643,6 +642,31 @@ public:
         }
         referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
     }
+
+    void save(std::string& path, bool timestamp) {
+        if (timestamp) {
+            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            size_t lastPeriod = path.find_last_of(".");
+            //if the extension is weird or absent, just put timestamp at end
+            if (lastPeriod == std::string::npos || (path.length() - lastPeriod) > 6) {
+                path.append(Sformat("{}", timestamp));
+            }
+            else {
+                path.insert(lastPeriod, Sformat("{}", timestamp));
+            }
+        }
+        std::ofstream fs(path, std::ios::binary);
+        if (fs.fail()) return;
+        fs.precision(10);
+        for (size_t j = 0; j < Nfreq; j++) {
+            fs << frequencies[j];
+            fs << " ";
+            fs << spectralPhaseMean[j];
+            fs << " ";
+            fs << spectralPhaseM2[j] / (phaseCount - 1);
+            fs << '\x0A';
+        }
+    }
 };
 spectralInterferometry theInterferenceController;
 
@@ -758,7 +782,7 @@ public:
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handleReferenceA);
         buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
         buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handleResetPhase);
-        buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleResetPhase);
+        buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleSavePhase);
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -969,6 +993,12 @@ void handleSave() {
     std::thread(acquisitionThread, activeSpectrometer, N, integrationTime, waitTime, path, timestamp).detach();
 }
 
+void handleSavePhase() {
+    std::string path;
+    theGui.filePaths[0].copyBuffer(path);
+    bool timestamp = theGui.checkBoxes[2].isChecked();
+    theInterferenceController.save(path, timestamp);
+}
 
 void referenceAAcquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait) {
     theInterferenceController.acquireReferenceA(theBatch, N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
