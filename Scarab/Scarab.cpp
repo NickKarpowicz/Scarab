@@ -1051,6 +1051,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         return;
     case 5:
         drawInterferenceGroupDelay(area, cr, width, height, data);
+        return;
     default:
         return;
     }
