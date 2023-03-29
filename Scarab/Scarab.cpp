@@ -12,6 +12,7 @@ bool updateDisplay();
 void handleRunButton();
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -701,7 +702,6 @@ public:
     int saveSVG = 0;
     bool loadedDefaults = false;
     unsigned int timeoutID = 0;
-
     void requestPlotUpdate() {
         queueUpdate = true;
     }
@@ -860,6 +860,7 @@ public:
         }
         pulldowns[1].addElement("Spectrometer live (nm)");
         pulldowns[1].addElement("Spectrometer live (THz)");
+        pulldowns[1].addElement("All spectrometers");
         pulldowns[1].addElement("Interferometry: Spectrum");
         pulldowns[1].addElement("Interferometry: Time");
         pulldowns[1].addElement("Interferometry: phase");
@@ -1071,15 +1072,18 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         drawSpectrumFrequency(area, cr, width, height, data);
         return;
     case 2:
-        drawInterferenceSpectrum(area, cr, width, height, data);
+        drawSpectraFrequency(area, cr, width, height, data);
         return;
     case 3:
-        drawInterferenceSpectrumTime(area, cr, width, height, data);
+        drawInterferenceSpectrum(area, cr, width, height, data);
         return;
     case 4:
-        drawInterferencePhase(area, cr, width, height, data);
+        drawInterferenceSpectrumTime(area, cr, width, height, data);
         return;
     case 5:
+        drawInterferencePhase(area, cr, width, height, data);
+        return;
+    case 6:
         drawInterferenceGroupDelay(area, cr, width, height, data);
         return;
     default:
@@ -1321,8 +1325,126 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
         if (sPlot.ExtraLines > 1 && firstAdded != 1 && spectrometerSet[activeSpectrometer].hasOverlay1) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlayFrequency(1, frequencies);
         else if (sPlot.ExtraLines > 1 && firstAdded != 2 && spectrometerSet[activeSpectrometer].hasOverlay2) sPlot.data3 = spectrometerSet[activeSpectrometer].getOverlayFrequency(2, frequencies);
 
-        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlay(2);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = spectrometerSet[activeSpectrometer].getOverlayFrequency(2, frequencies);
     }
+    sPlot.plot(cr);
+}
+
+void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
+    LwePlot sPlot;
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
+    }
+    bool logPlot = false;
+    if (theGui.checkBoxes[1].isChecked()) {
+        logPlot = true;
+
+    }
+
+    bool forceX = false;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = true;
+    }
+    bool forceY = false;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = true;
+    }
+
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[0].copyBuffer(svgPath);
+        svgPath.append("_SpectrumTHz.svg");
+        sPlot.SVGPath = svgPath;
+    }
+    size_t Nfreq = static_cast<size_t>(theGui.textBoxes[15].valueDouble());
+    if (Nfreq < 2) return;
+    double fMin = theGui.textBoxes[16].valueDouble();
+    double fMax = theGui.textBoxes[17].valueDouble();
+    
+    for (int i = 0; i < spectrometerSet.size(); i++) {
+    
+    }
+    if (fMax == 0.0) {
+        fMax = spectrometerSet[0].wavelengths()[0];
+        fMax = 1e-3 * lightC<double>() / fMax;
+        for (int i = 1; i < spectrometerSet.size(); i++) {
+            fMax = maxN(fMax, 1e-3 * lightC<double>() / spectrometerSet[i].wavelengths()[0]);
+        }
+    }
+    if (fMin == 0.0) {
+        fMin = spectrometerSet[0].wavelengths()[spectrometerSet[0].size() - 1];
+        fMin = 1e-3 * lightC<double>() / fMax;
+        for (int i = 1; i < spectrometerSet.size(); i++) {
+            fMin = minN(fMin, 1e-3 * lightC<double>() / spectrometerSet[i].wavelengths()[spectrometerSet[0].size() - 1]);
+        }
+    }
+
+    double dF = (fMax - fMin) / static_cast<double>(Nfreq - 1);
+    std::vector<double> frequencies(Nfreq);
+    for (size_t i = 0; i < Nfreq; i++) {
+        frequencies[i] = fMin + static_cast<double>(i) * dF;
+    }
+    std::vector<std::vector<double>> liveSpectra(spectrometerSet.size());
+    if (theGui.runningLive() && Nfreq > 0) {
+        for (int i = 0; i < spectrometerSet.size(); i++) {
+            liveSpectra[i] = spectrometerSet[i].acquireSingleFrequency(frequencies);
+        }
+    }
+    else return;
+
+    LweColor mainColor(0.5, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
+        mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
+    }
+
+    LweColor overLay0Color(1, 0, 1, 1);
+    if (0.0 != (theGui.textBoxes[4].valueDouble() + theGui.textBoxes[5].valueDouble() + theGui.textBoxes[6].valueDouble())) {
+        overLay0Color = LweColor(theGui.textBoxes[4].valueDouble(), theGui.textBoxes[5].valueDouble(), theGui.textBoxes[6].valueDouble(), 1);
+    }
+
+    LweColor overLay1Color(1, 0.5, 0, 1);
+    if (0.0 != (theGui.textBoxes[7].valueDouble() + theGui.textBoxes[8].valueDouble() + theGui.textBoxes[9].valueDouble())) {
+        overLay1Color = LweColor(theGui.textBoxes[7].valueDouble(), theGui.textBoxes[8].valueDouble(), theGui.textBoxes[9].valueDouble(), 1);
+    }
+
+    LweColor overLay2Color(0, 1, 1, 1);
+    if (0.0 != (theGui.textBoxes[10].valueDouble() + theGui.textBoxes[11].valueDouble() + theGui.textBoxes[12].valueDouble())) {
+        overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
+    }
+
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataX = frequencies.data();
+    sPlot.hasDataX = true;
+    sPlot.data = liveSpectra[0].data();
+    sPlot.Npts = Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = forceY;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = mainColor;
+    sPlot.color2 = overLay0Color;
+    sPlot.color3 = overLay1Color;
+    sPlot.color4 = overLay2Color;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Spectrum (counts)";
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    sPlot.markers = false;
+    sPlot.ExtraLines = liveSpectra.size()-1;
+    if (liveSpectra.size() > 0) sPlot.data2 = liveSpectra[1].data();
+    if (liveSpectra.size() > 1) sPlot.data3 = liveSpectra[2].data();
+    if (liveSpectra.size() > 2) sPlot.data4 = liveSpectra[3].data();
     sPlot.plot(cr);
 }
 
