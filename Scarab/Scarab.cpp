@@ -664,7 +664,7 @@ public:
             fs << " ";
             fs << spectralPhaseMean[j];
             fs << " ";
-            fs << spectralPhaseM2[j] / (phaseCount - 1);
+            fs << std::sqrt(spectralPhaseM2[j] / (phaseCount - 1));
             fs << '\x0A';
         }
     }
