@@ -30,6 +30,8 @@ void handleSave();
 void handleReferenceA();
 void handleReferenceB();
 void handleResetController();
+void handleResetPhase();
+void handleSavePhase();
 void svgCallback();
 
 double modSquared(const std::complex<double>& x){
@@ -452,6 +454,8 @@ class spectralInterferometry {
             spectralPhaseM2[i] += delta * delta2;
         }
     }
+
+
     void calculateGroupDelay() {
         double dwFactor = 0.5/(dF * twoPi<double>());
         groupDelay[0] = 2 * dwFactor * (spectralPhase[1] - spectralPhase[0]);
@@ -470,7 +474,7 @@ public:
     }
     void resetFrequencies(size_t N, double fMin, double fMax) {
         if (N < 2) return;
-        if (frequencies.size() == N && minF == fMin && maxF == maxF) return;
+        if (Nfreq == N && minF == fMin && maxF == fMax) return;
         frequencies = std::vector<double>(N);
         dF = (fMax - fMin) / (N - 1);
         Nfreq = N;
@@ -496,6 +500,12 @@ public:
         groupDelay = spectralPhase;
         phaseCount = 0;
         isConfigured = true;
+    }
+
+    void resetPhase() {
+        phaseCount = 0;
+        spectralPhaseMean = std::vector<double>(Nfreq, 0.0);
+        spectralPhaseM2 = spectralPhaseMean;
     }
 
     void acquireNewPhase(OceanSpectrometer& s) {
@@ -700,6 +710,7 @@ public:
 
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
+        int smallButton = 3;
         int textWidth = 2;
         int labelWidth = 2;
         int plotWidth = 12;
@@ -713,7 +724,7 @@ public:
         int textCol4 = 4 * textWidth;
         int textCol5 = 5 * textWidth;
         int textCol6 = 6 * textWidth;
-        int buttonCol1 = 9;
+        int buttonCol1 = 8;
 
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         window.init(app, "Spectrometer Control and Recording for Attosecond Beamlines", 1400, 800);
@@ -742,9 +753,10 @@ public:
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
         
-        buttons[9].init(("Ref. A"), parentHandle, 0, 12, buttonWidth, 1, handleReferenceA);
-        buttons[10].init(("Ref. B"), parentHandle, buttonWidth, 12, buttonWidth, 1, handleReferenceB);
-        buttons[11].init(("FFT setup"), parentHandle, buttonWidth*2, 12, buttonWidth, 1, handleResetController);
+        buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handleReferenceA);
+        buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
+        buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handleResetPhase);
+        buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleResetPhase);
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -833,7 +845,7 @@ public:
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
         initializeSpectrometers();
-        pulldowns[0].init(parentHandle, 0, 0, 13, 1);
+        pulldowns[0].init(parentHandle, 0, 0, 12, 1);
         drawBoxes[0].queueDraw();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
     }
@@ -969,6 +981,7 @@ void configureSIFrequencies() {
 }
 
 void handleReferenceA() {
+    handleResetController();
     if (!theInterferenceController.checkConfigurationStatus()) {
         theGui.console.cPrint("Reset controller with frequencies first.\n");
         return;
@@ -983,6 +996,7 @@ void handleReferenceA() {
 }
 
 void handleReferenceB() {
+    handleResetController();
     if (!theInterferenceController.checkConfigurationStatus()) {
         theGui.console.cPrint("Reset controller with frequencies first.\n");
         return;
@@ -1011,6 +1025,10 @@ void handleResetController() {
         fMin = 1e-3 * lightC<double>() / fMin;
     }
     theInterferenceController.resetFrequencies(Nfreq, fMin, fMax);
+}
+
+void handleResetPhase() {
+    theInterferenceController.resetPhase();
 }
 
 void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1276,6 +1294,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 }
 
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    handleResetController();
     if (!theInterferenceController.checkConfigurationStatus()) handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1371,6 +1390,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 }
 
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1463,6 +1483,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
 
 
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1547,6 +1568,7 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 }
 
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
