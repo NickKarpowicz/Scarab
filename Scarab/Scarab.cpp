@@ -1244,11 +1244,11 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     double fMax = theGui.textBoxes[17].valueDouble();
 
     if (fMax == 0.0) {
-        fMax = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
+        fMax = spectrometerSet[activeSpectrometer].wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
     }
     if (fMin == 0.0) {
-        fMin = spectrometerSet[activeSpectrometer].wavelengths()[0];
+        fMin = spectrometerSet[activeSpectrometer].wavelengths()[spectrometerSet[activeSpectrometer].size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
     }
     double dF = (fMax - fMin) / static_cast<double>(Nfreq - 1);
@@ -1366,10 +1366,6 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     if (Nfreq < 2) return;
     double fMin = theGui.textBoxes[16].valueDouble();
     double fMax = theGui.textBoxes[17].valueDouble();
-    
-    for (int i = 0; i < spectrometerSet.size(); i++) {
-    
-    }
     if (fMax == 0.0) {
         fMax = spectrometerSet[0].wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
