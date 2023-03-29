@@ -151,12 +151,10 @@ public:
         return isLocked;
     }
     void acquireOverlay(int overlayIndex) {        
-        
         switch (overlayIndex) {
         case 0:
             odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
             subtractDark(overlay0, overlay0MinusDark);
-            
             lastOverlay = 0;
             hasOverlay0 = true;
             break;
@@ -455,7 +453,6 @@ class spectralInterferometry {
         }
     }
 
-
     void calculateGroupDelay() {
         double dwFactor = 0.5/(dF * twoPi<double>());
         groupDelay[0] = 2 * dwFactor * (spectralPhaseMean[1] - spectralPhaseMean[0]);
@@ -671,8 +668,6 @@ public:
 };
 spectralInterferometry theInterferenceController;
 
-
-
 //Main class for controlling the interface
 class mainGui {
     bool queueUpdate = false;
@@ -764,8 +759,6 @@ public:
         gtk_css_provider_load_from_data(buttonShrinker,
             "label, scale, range, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-
 
         buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
         buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
@@ -1007,10 +1000,6 @@ void referenceAAcquisitionThread(int activeSpectrometer, size_t N, double integr
 
 void referenceBAcquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait) {
     theInterferenceController.acquireReferenceB(theBatch, N, integrationTime, secondsToWait, spectrometerSet[activeSpectrometer]);
-}
-
-void configureSIFrequencies() {
-
 }
 
 void handleReferenceA() {
@@ -1455,7 +1444,6 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-
     }
 
     bool forceX = false;
@@ -1498,8 +1486,6 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
         overLay2Color = LweColor(theGui.textBoxes[10].valueDouble(), theGui.textBoxes[11].valueDouble(), theGui.textBoxes[12].valueDouble(), 1);
     }
 
-    
-
     if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
         spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
@@ -1536,7 +1522,6 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
             sPlot.ExtraLines = 2;
         }
     }
-
     sPlot.plot(cr);
 }
 
@@ -1550,7 +1535,6 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-
     }
 
     bool forceX = false;
@@ -1643,7 +1627,6 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-
     }
 
     bool forceX = false;
@@ -1728,7 +1711,6 @@ void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, in
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-
     }
 
     bool forceX = false;
@@ -1803,8 +1785,6 @@ void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, in
     sPlot.plot(cr);
 }
 
-
-
 bool updateDisplay() {
     theGui.requestPlotUpdate();
     theGui.console.updateFromBuffer();
@@ -1817,7 +1797,6 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         GFile* file = gtk_file_chooser_get_file(chooser);
         std::string s(g_file_get_path(file));
         theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
-        
     }
     g_object_unref(dialog);
     }
