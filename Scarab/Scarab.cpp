@@ -458,11 +458,11 @@ class spectralInterferometry {
 
     void calculateGroupDelay() {
         double dwFactor = 0.5/(dF * twoPi<double>());
-        groupDelay[0] = 2 * dwFactor * (spectralPhase[1] - spectralPhase[0]);
+        groupDelay[0] = 2 * dwFactor * (spectralPhaseMean[1] - spectralPhaseMean[0]);
         for (int i = 1; i < Nfreq-1; i++) {
-            groupDelay[i] = dwFactor * (spectralPhase[i + 1] - spectralPhase[i - 1]);
+            groupDelay[i] = dwFactor * (spectralPhaseMean[i + 1] - spectralPhaseMean[i - 1]);
         }
-        groupDelay[Nfreq - 1] = 2 * dwFactor * (spectralPhase[Nfreq - 1] - spectralPhase[Nfreq - 2]);
+        groupDelay[Nfreq - 1] = 2 * dwFactor * (spectralPhaseMean[Nfreq - 1] - spectralPhaseMean[Nfreq - 2]);
     }
 
 public:
@@ -478,6 +478,8 @@ public:
         frequencies = std::vector<double>(N);
         dF = (fMax - fMin) / (N - 1);
         Nfreq = N;
+        minF = fMin;
+        maxF = fMax;
         for (int i = 0; i < N; i++) {
             frequencies[i] = fMin + static_cast<double>(i) * dF;
         }
@@ -715,7 +717,7 @@ public:
         int labelWidth = 2;
         int plotWidth = 12;
         int plotHeight = 6;
-        int pathChars = 45;
+        int pathChars = 42;
         int colWidth = labelWidth + 2 * textWidth;
         int textCol0 = 0;
         int textCol1 = textWidth;
@@ -808,7 +810,7 @@ public:
         textBoxes[19].overwritePrint(std::string("80"));
         textBoxes[20].overwritePrint(std::string("12"));
 
-        filePaths[0].init(parentHandle, 0, 6, 11, 1);
+        filePaths[0].init(parentHandle, 0, 6, 10, 1);
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
         checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
