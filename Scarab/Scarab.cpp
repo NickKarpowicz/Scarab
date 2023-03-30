@@ -597,7 +597,7 @@ public:
             fftReferenceAReal[i] = modSquared(fftReferenceA[i]);
             fftReferenceBReal[i] = modSquared(fftReferenceB[i]);
             fftDataReal[i] = modSquared(hilbertTimeBuffer[i] - fftReferenceA[i] - fftReferenceB[i]);
-            maxSignal = maxN(fftDataReal[i], maxSignal);
+            maxSignal = maxN(fftReferenceAReal[i], maxSignal);
             timeFilter[i] = std::exp(-std::pow(
                 (static_cast<double>(i) * dt - filterT0) / filterWidth, filterOrder)
                 / sqrt(2.0));
