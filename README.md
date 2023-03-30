@@ -77,11 +77,7 @@ Procedure:
 1. Block arm B.
 2. Press "Ref. A"
 3. Block arm A.
-4. Press "Ref. B"
-
-Now you should have the required references to do interferometry. You'll have to re-take them if you change your exposure time.
-
-The next steps to set up a phase measurement are:
+4. Press "Ref. B" Now you should have the required references to do interferometry. You'll have to re-take them if you change your exposure time. Next steps:
 5. Go to the "Interferometry: Time" view to setup your filter.
 6. Go to the "Interferometry: Phase" or "Interferometry: Group delay" view to start acquiring the data.
 
@@ -90,7 +86,7 @@ Once you're acquiring phase, it will take a running average of all the values. I
 
 ## Save button
 This will save the interferometry data.
-The colkumns are:
+The columns are:
 1. Frequency (THz)
 2. Phase (rad)
 3. Standard deviation of phase (rad)
