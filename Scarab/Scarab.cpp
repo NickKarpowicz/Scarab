@@ -219,6 +219,8 @@ public:
             if (hasDarkSpectrum) overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2MinusDark);
             overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2);
             return overlay2F.data();
+        default:
+            return nullptr;
         }
     }
 
@@ -1364,7 +1366,7 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     }
     if (fMin == 0.0) {
         fMin = spectrometerSet[0].wavelengths()[spectrometerSet[0].size() - 1];
-        fMin = 1e-3 * lightC<double>() / fMax;
+        fMin = 1e-3 * lightC<double>() / fMin;
         for (int i = 1; i < spectrometerSet.size(); i++) {
             fMin = minN(fMin, 1e-3 * lightC<double>() / spectrometerSet[i].wavelengths()[spectrometerSet[0].size() - 1]);
         }
@@ -1426,10 +1428,10 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    sPlot.ExtraLines = liveSpectra.size()-1;
-    if (liveSpectra.size() > 0) sPlot.data2 = liveSpectra[1].data();
-    if (liveSpectra.size() > 1) sPlot.data3 = liveSpectra[2].data();
-    if (liveSpectra.size() > 2) sPlot.data4 = liveSpectra[3].data();
+    sPlot.ExtraLines = static_cast<int>(liveSpectra.size())-1;
+    if (liveSpectra.size() > 1) sPlot.data2 = liveSpectra[1].data();
+    if (liveSpectra.size() > 2) sPlot.data3 = liveSpectra[2].data();
+    if (liveSpectra.size() > 3) sPlot.data4 = liveSpectra[3].data();
     sPlot.plot(cr);
 }
 
@@ -1828,7 +1830,7 @@ static void activate(GtkApplication* app, gpointer user_data) {
 }
 
 int main(int argc, char** argv) {
-    GtkApplication* app = gtk_application_new("nickkarpowicz.lightwave", (GApplicationFlags)0);
+    GtkApplication* app = gtk_application_new("nickkarpowicz.scarab", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
 }
