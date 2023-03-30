@@ -490,7 +490,7 @@ public:
             referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
         }
         if (referenceDataB.size() > 0) {
-            referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
+            referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
         }
 
         interferenceData = std::vector<double>(wavelengths);
@@ -511,8 +511,6 @@ public:
 
     void acquireNewPhase(OceanSpectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
-        referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
-        referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
         calculatePhase();
         updateWithNewPhase();
         calculateGroupDelay();
