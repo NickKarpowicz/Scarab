@@ -98,3 +98,6 @@ Beneath the plot, there are a few more buttons and controls. These are:
 - _ylim button, and next two text boxes_: set the y-axis limits manually. If empty, data will be autoscaled.
 - _Log checkbox_: Plot on a log scale. Note that if you check this, you will probably need to set a the y-limits manually (the lower limit should be greater than zero!).
 
+
+# Build requirements
+if you want to build it yourself, you'll need [Ocean Direct](https://www.oceaninsight.com/products/software/drivers/oceandirect/) from Ocean Insight. Additionally, it depends on the [GTK4](http://www.gtk.org) library, and my [Lightwave Explorer code](http://github.com/NickKarpowicz/LightwaveExplorer).
