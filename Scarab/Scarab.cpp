@@ -41,8 +41,10 @@ double modSquared(const std::complex<double>& x){
 
 std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
 {
+    double dF = frequencies[1] - frequencies[0];
     std::vector<double> spectrumOut(frequencies.size());
-    //lambda for performing single point interpolation
+
+    //lambda for performing single point linear interpolation
     auto interpolateSingle = [&](double targetFrequency) {
         double targetWavelength = constProd(lightC<double>(),1e-3) / targetFrequency;
         if (targetFrequency == 0.0 || targetWavelength < wavelengths[1] || targetWavelength > wavelengths[wavelengths.size() - 1]) {
@@ -53,9 +55,40 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
         return (1e-6*targetWavelength*targetWavelength)*(spectrumIn[i - 1] + (spectrumIn[i] - spectrumIn[i - 1]) / (wavelengths[i] - wavelengths[i - 1]) * (targetWavelength - wavelengths[i - 1]));
     };
 
-    for (size_t j = 0; j < frequencies.size(); j++) {
-        spectrumOut[j] = interpolateSingle(frequencies[j]);
+    //Lamba for cell averaged interpolation
+    auto interpolateBin = [&](double targetFrequency) {
+        double targetWavelength = constProd(lightC<double>(), 1e-3) / targetFrequency;
+        if (targetFrequency == 0.0 || targetWavelength < wavelengths[1] || targetWavelength > wavelengths[wavelengths.size() - 2]) {
+            return 0.0;
+        }
+
+        double lowEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency + 0.5 * dF);
+        double highEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency - 0.5 * dF);
+
+        int lowPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), lowEdge));
+        int highPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), highEdge)) - 1;
+
+        //if the size of the cell is smaller than the data spacing, return linear interpolation value
+        if ((highPt - lowPt) < 1) return interpolateSingle(targetFrequency);
+
+        double lowValue = interpolateSingle(targetFrequency + 0.5 * dF);
+        double highValue = interpolateSingle(targetFrequency - 0.5 * dF);
+
+        double totalArea = (wavelengths[lowPt] - lowEdge) * (lowValue + spectrumIn[lowPt]);
+        totalArea += (highEdge - wavelengths[highPt]) * (highValue + spectrumIn[highPt]);
+        for (int i = 0; i < (highPt - lowPt); i++) {
+            totalArea += (wavelengths[i + lowPt + 1] - wavelengths[i + lowPt]) * (spectrumIn[i + lowPt + 1] + spectrumIn[i + lowPt]);
+        }
+
+        return (0.5e-6 * targetWavelength * targetWavelength) * totalArea / (highEdge - lowEdge);
+
+    };
+
+#pragma omp parallel for
+    for (int j = 0; j < frequencies.size(); j++) {
+        spectrumOut[j] = interpolateBin(frequencies[j]);
     }
+
     return spectrumOut;
 }
 
@@ -88,6 +121,7 @@ class OceanSpectrometer {
             dataMinusDark = dataVector;
             return;
         }
+
         for (size_t i = 0; i < pixelCount; i++) {
             dataMinusDark[i] = dataVector[i] - darkSpectrum[i];
         }
