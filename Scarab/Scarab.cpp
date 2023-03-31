@@ -69,7 +69,7 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
         int highPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), highEdge)) - 1;
 
         //if the size of the cell is smaller than the data spacing, return linear interpolation value
-        if ((highPt - lowPt) < 1) return interpolateSingle(targetFrequency);
+        if ((highPt - lowPt) < 2) return interpolateSingle(targetFrequency);
 
         double lowValue = interpolateSingle(targetFrequency + 0.5 * dF);
         double highValue = interpolateSingle(targetFrequency - 0.5 * dF);
