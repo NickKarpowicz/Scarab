@@ -277,7 +277,6 @@ public:
         else {
             return readBuffer.data();
         }
-        
     }
 
     void appendBufferTo(std::vector<double>& outputBuffer) {
@@ -287,7 +286,6 @@ public:
         else {
             outputBuffer.insert(outputBuffer.end(), readBufferMinusDark.begin(), readBufferMinusDark.end());
         }
-        
     }
 
     double* wavelengths() {
@@ -903,7 +901,7 @@ public:
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 12, 1);
         drawBoxes[0].queueDraw();
-        timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
+        timeoutID = g_timeout_add(20, G_SOURCE_FUNC(updateDisplay), NULL);
     }
 
     void initializeSpectrometers() {
