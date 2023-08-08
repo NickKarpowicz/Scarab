@@ -412,6 +412,7 @@ class spectralInterferometry {
     fftw_plan fftPlanZ2D;
     bool hasData = false;
     bool isConfigured = false;
+    bool useAveraging = true;
     double dF = 2e12;
     double minF = 100e12;
     double maxF = 2e12 * 512 + 100e12;
@@ -478,12 +479,21 @@ class spectralInterferometry {
     }
 
     void updateWithNewPhase() {
-        phaseCount++;
-        for (int i = 0; i < Nfreq; i++) {
-            double delta = spectralPhase[i] - spectralPhaseMean[i];
-            spectralPhaseMean[i] += delta / phaseCount;
-            double delta2 = spectralPhase[i] - spectralPhaseMean[i];
-            spectralPhaseM2[i] += delta * delta2;
+        if (useAveraging) {
+            phaseCount++;
+            for (int i = 0; i < Nfreq; i++) {
+                double delta = spectralPhase[i] - spectralPhaseMean[i];
+                spectralPhaseMean[i] += delta / phaseCount;
+                double delta2 = spectralPhase[i] - spectralPhaseMean[i];
+                spectralPhaseM2[i] += delta * delta2;
+            }
+        }
+        else {
+            phaseCount = 0;
+            for (int i = 0; i < Nfreq; i++) { 
+                spectralPhaseMean[i] = spectralPhase[i];
+                spectralPhaseM2[i] = 0.0;
+            }
         }
     }
 
@@ -502,6 +512,9 @@ public:
     }
     ~spectralInterferometry() {
         destroyFFT();
+    }
+    void setAveraging(bool newState) {
+        useAveraging = newState;
     }
     void resetFrequencies(size_t N, double fMin, double fMax) {
         if (N < 2) return;
@@ -873,6 +886,7 @@ public:
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawSpectrum);
         checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
+        checkBoxes[3].init(("Average phase"), window.parentHandle(4), 15, 0, 1, 1);
         buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, handleRefreshRequest);
         buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
@@ -916,26 +930,43 @@ public:
         std::vector<long> deviceIds(deviceIdCount);
         int retrievedIdCount = odapi_get_device_ids(deviceIds.data(), deviceIdCount);
         int error = 0;
+        console.cPrint("RID count {}\n", retrievedIdCount);
+
         spectrometerSet = std::vector<OceanSpectrometer>(deviceIdCount);
         
 		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
+            if (error) {
+                console.cPrint("Couldn't open the device! Error code{}\n", error);
+                noSpectrometers = true;
+                return;
+            }
 			// Get the device name
-			const int nameLength = 32;
+			const int nameLength = 128;
 			char deviceName[nameLength] = { 0 };
 			odapi_get_device_name(deviceIds[i], &error, deviceName, nameLength);
 			if (error != 0) {
 				console.cPrint("Failed to retrieve the spectrometer type. The error code is:  {}\n", error);
+                noSpectrometers = true;
+                return;
 			}
 			// and serial number
 			int serialNumberLength = odapi_get_serial_number_maximum_length(deviceIds[i], &error);
-			std::unique_ptr<char> serialNumber(new char[serialNumberLength]);
+            if (error != 0) {
+                console.cPrint("Failed to retrieve the serial number length. The error code is:  {}\n", error);
+                noSpectrometers = true;
+                return;
+            }
+            std::unique_ptr<char> serialNumber(new char[serialNumberLength + 1] {});
 			odapi_get_serial_number(deviceIds[i], &error, serialNumber.get(), serialNumberLength);
 			if (error != 0) {
 				console.cPrint("Failed to retrieve the spectrometer serial number. The error code is:  {}\n", error);
+                noSpectrometers = true;
+                return;
 			}
 			else {
 				console.cPrint("Device {}: {}\n    serial number: {}\n", i, deviceName, serialNumber.get());
+                //console.cPrint("Device {}: {}\n    serial number: {}\n", i, deviceName, 0);
                 std::string newElement = Sformat("{}: {}", i, deviceName);
                 pulldowns[0].addElement(newElement.c_str());
 			}
@@ -1522,6 +1553,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 
     if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
         spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
     }
     sPlot.height = height;
@@ -1615,6 +1647,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
     double ord = theGui.textBoxes[20].valueDouble();
     if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
         spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewInterferogram(spectrometerSet[theGui.pulldowns[0].getValue()]);
     }
     theInterferenceController.setTimeFilter(t0, sigma, ord);
@@ -1705,6 +1738,7 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 
     if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
         spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewPhase(spectrometerSet[theGui.pulldowns[0].getValue()]);
     }
 
@@ -1789,6 +1823,7 @@ void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, in
 
     if (theGui.runningLive() && !spectrometerSet[theGui.pulldowns[0].getValue()].checkLock()) {
         spectrometerSet[theGui.pulldowns[0].getValue()].setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewPhase(spectrometerSet[theGui.pulldowns[0].getValue()]);
     }
 
