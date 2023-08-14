@@ -65,8 +65,8 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
         double lowEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency + 0.5 * dF);
         double highEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency - 0.5 * dF);
 
-        int lowPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), lowEdge));
-        int highPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), highEdge)) - 1;
+        auto lowPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), lowEdge));
+        auto highPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), highEdge)) - 1;
 
         //if the size of the cell is smaller than the data spacing, return linear interpolation value
         if ((highPt - lowPt) < 2) return interpolateSingle(targetFrequency);
@@ -739,7 +739,6 @@ public:
     LweCheckBox checkBoxes[4];
     LweSlider plotSlider;
     LweWindow window;
-    LweSpacer spacers[2];
     size_t pathTarget{};
     int saveSVG = 0;
     bool loadedDefaults = false;
