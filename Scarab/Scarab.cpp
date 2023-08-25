@@ -20,6 +20,7 @@ void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, in
 void handleGetOverlay0();
 void handleGetOverlay1();
 void handleGetOverlay2();
+void handleCollapsePanel();
 void handleDeleteOverlay0();
 void handleDeleteOverlay1();
 void handleDeleteOverlay2();
@@ -727,7 +728,7 @@ class mainGui {
     
 public:
     LweTextBox textBoxes[54];
-    LweButton buttons[16];
+    LweButton buttons[18];
     LweButton miniButtons[12];
     LweConsole console;
     LweConsole sequence;
@@ -822,6 +823,7 @@ public:
         buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
         buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handleResetPhase);
         buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleSavePhase);
+        
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -878,23 +880,26 @@ public:
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
         checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
         buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, saveFileDialogCallback, 0);
-        textBoxes[48].init(window.parentHandle(4), 2, 0, 2, 1);
-        textBoxes[49].init(window.parentHandle(4), 4, 0, 2, 1);
-        textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
-        textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
+        textBoxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
+        textBoxes[49].init(window.parentHandle(4), 5, 0, 2, 1);
+        textBoxes[50].init(window.parentHandle(4), 7, 0, 2, 1);
+        textBoxes[51].init(window.parentHandle(4), 11, 0, 2, 1);
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawSpectrum);
         checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
         checkBoxes[3].init(("Average phase"), window.parentHandle(4), 15, 0, 1, 1);
-        buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, handleRefreshRequest);
-        buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
-        buttons[10].squeeze();
-        buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, handleRefreshRequest);
-        buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
-        buttons[11].squeeze();
-        buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
-        buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
-        buttons[12].squeeze();
+        buttons[13].init(("xlim"), window.parentHandle(4), 2, 0, 1, 1, handleRefreshRequest);
+        buttons[13].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
+        buttons[13].squeeze();
+        buttons[14].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, handleRefreshRequest);
+        buttons[14].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
+        buttons[14].squeeze();
+        buttons[15].init(("SVG"), window.parentHandle(4), 1, 0, 1, 1, svgCallback);
+        buttons[15].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
+        buttons[15].squeeze();
+        buttons[16].init("\xe2\x86\x94\xef\xb8\x8f", window.parentHandle(4), 0, 0, 1, 1, handleCollapsePanel);
+        buttons[16].setTooltip("Collapse/expand the data entry panel");
+
         for (int i = 0; i < 18; i++) {
             textBoxes[i].setMaxCharacters(6);
         }
@@ -1010,6 +1015,10 @@ void handleGetOverlay1() {
 
 void handleGetOverlay2() {
     spectrometerSet[theGui.pulldowns[0].getValue()].acquireOverlay(2);
+}
+
+void handleCollapsePanel() {
+    theGui.window.toggleSettingsPanel();
 }
 
 void handleDeleteOverlay0() {
