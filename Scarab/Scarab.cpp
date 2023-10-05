@@ -5,7 +5,7 @@
 #include <complex>
 #include <fftw3_mkl.h>
 #include "api/OceanDirectAPI.h"
-#include "LightwaveExplorerGTK/LightwaveExplorerGraphicalClasses.h"
+#include "Frontend/LightwaveExplorerGraphicalClasses.h"
 
 void destroyMainWindowCallback();
 bool updateDisplay();

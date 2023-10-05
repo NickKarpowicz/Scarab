@@ -77,7 +77,7 @@
     <LibraryPath>$(OutputPath);$(SolutionDir)../gtk/lib;C:\Program Files\Ocean Insight\OceanDirect SDK\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)../LightwaveExplorer;$(SolutionDir)../gtk/lib/graphene-1.0/include;$(SolutionDir)../gtk/include/gtk-4.0;$(SolutionDir)../gtk/include/cairo;$(SolutionDir)../gtk/include/pango-1.0;$(SolutionDir)../gtk/include/glib-2.0;$(SolutionDir)../gtk/include/pixman-1;$(SolutionDir)../gtk/freetype2;$(SolutionDir)../gtk/include/libpng16;$(SolutionDir)../gtk/include/harfbuzz;$(SolutionDir)../gtk/lib/glib-2.0/include;$(SolutionDir)../gtk/include/gdk-pixbuf-2.0;$(SolutionDir)../gtk/include/graphene-1.0;C:\Program Files\Ocean Insight\OceanDirect SDK\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)../LightwaveExplorer/Source;$(SolutionDir)../gtk/lib/graphene-1.0/include;$(SolutionDir)../gtk/include/gtk-4.0;$(SolutionDir)../gtk/include/cairo;$(SolutionDir)../gtk/include/pango-1.0;$(SolutionDir)../gtk/include/glib-2.0;$(SolutionDir)../gtk/include/pixman-1;$(SolutionDir)../gtk/freetype2;$(SolutionDir)../gtk/include/libpng16;$(SolutionDir)../gtk/include/harfbuzz;$(SolutionDir)../gtk/lib/glib-2.0/include;$(SolutionDir)../gtk/include/gdk-pixbuf-2.0;$(SolutionDir)../gtk/include/graphene-1.0;C:\Program Files\Ocean Insight\OceanDirect SDK\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(OutputPath);$(SolutionDir)../gtk/lib;C:\Program Files\Ocean Insight\OceanDirect SDK\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
