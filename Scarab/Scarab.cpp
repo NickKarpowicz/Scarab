@@ -27,7 +27,7 @@ void handleDeleteOverlay2();
 void handleGetDarkSpectrum();
 void handleDeleteDarkSpectrum();
 void handleRefreshRequest();
-void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
+void savePathCallback();
 void handleSave();
 void handleReferenceA();
 void handleReferenceB();
@@ -722,6 +722,7 @@ class mainGui {
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
     bool queueInterfaceValuesUpdate = false;
+    bool queueSavePathUpdate = false;
     bool isRunningLive = false;
     bool noSpectrometers = false;
     int sliderTarget = 0;
@@ -740,7 +741,7 @@ public:
     LweCheckBox checkBoxes[4];
     LweSlider plotSlider;
     LweWindow window;
-    size_t pathTarget{};
+    std::string pathBuffer;
     int saveSVG = 0;
     bool loadedDefaults = false;
     unsigned int timeoutID = 0;
@@ -764,6 +765,11 @@ public:
             queueUpdate = false;
             drawBoxes[0].queueDraw();
         }
+        if (queueSavePathUpdate && pathBuffer != "?LWE_LOADING??") {
+            queueSavePathUpdate = false;
+            if (pathBuffer == "?LWE_NOPATH??") return;
+            filePaths[0].overwritePrint(pathBuffer);
+        }
     }
     void requestSliderUpdate() {
         queueSliderUpdate = true;
@@ -775,7 +781,13 @@ public:
     void requestInterfaceValuesUpdate() {
         queueInterfaceValuesUpdate = true;
     }
-
+    void requestSavePathUpdate() {
+#ifndef __APPLE__
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromSaveDialog(pathBuffer, "txt", "Text (.txt)");
+#endif
+        queueSavePathUpdate = true;
+    }
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
         int smallButton = 3;
@@ -797,15 +809,6 @@ public:
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         window.init(app, "Spectrometer Control and Recording for Attosecond Beamlines", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
-        GtkCssProvider* textProvider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider,
-            "label, scale { font-family: Arial; font-weight: bold; }\n button, entry, textview { font-family: Arial; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-        GtkCssProvider* buttonShrinker = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(buttonShrinker,
-            "label, scale, range, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
         buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
@@ -879,7 +882,7 @@ public:
         filePaths[0].setMaxCharacters(pathChars);
         filePaths[0].overwritePrint(Sformat("DefaultOutput.txt"));
         checkBoxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
-        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, saveFileDialogCallback, 0);
+        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, savePathCallback, 0);
         textBoxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
         textBoxes[49].init(window.parentHandle(4), 5, 0, 2, 1);
         textBoxes[50].init(window.parentHandle(4), 7, 0, 2, 1);
@@ -1868,31 +1871,12 @@ bool updateDisplay() {
     theGui.applyUpdate();
     return true;
 }
-void pathFromDialogBox(GtkDialog* dialog, int response) {
-    if (response == GTK_RESPONSE_ACCEPT) {
-        GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
-        GFile* file = gtk_file_chooser_get_file(chooser);
-        std::string s(g_file_get_path(file));
-        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
-    }
-    g_object_unref(dialog);
-    }
-void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
-    theGui.pathTarget = (size_t)pathTarget;
-    //get around bug in GTK4 by opening dialog box directly in cocoa on mac
+
+void savePathCallback() {
 #ifdef __APPLE__
-    NSString* filePath;
-    NSSavePanel* savePanel = [NSSavePanel savePanel];
-    if ([savePanel runModal] == NSModalResponseOK) {
-        filePath = [savePanel URL].path;
-        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", [filePath UTF8String]);
-    }
-    return;
-#else
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
-    g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
-#endif
+    theGui.pathBuffer = pathFromAppleSaveDialog();
+#endif 
+    theGui.requestSavePathUpdate();
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {

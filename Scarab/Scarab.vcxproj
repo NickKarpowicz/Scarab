@@ -120,7 +120,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;OceanDirect.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gio-2.0.lib;gtk-4.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;OceanDirect.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
@@ -144,7 +144,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;OceanDirect.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gio-2.0.lib;gtk-4.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;OceanDirect.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
