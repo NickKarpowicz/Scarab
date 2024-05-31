@@ -23,10 +23,8 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(scarab
         -Wl,--start-group 
         ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-        ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+        ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
         ${MKL_ROOT}/lib/intel64/libmkl_core.a 
-        -Wl,--end-group
-        ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a)
-    target_link_libraries(scarab TBB::tbb)
+        -Wl,--end-group -lgomp -lpthread -ldl)
     install(TARGETS scarab)
 endif()
