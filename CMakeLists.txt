@@ -5,7 +5,6 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     find_package(fmt REQUIRED)
     find_package(MKL REQUIRED)
-    find_package(TBB REQUIRED)
     pkg_check_modules(GTK4 gtk4)
 
     include_directories(${MKL_ROOT}/include/fftw)
