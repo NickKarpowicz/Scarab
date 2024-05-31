@@ -96,7 +96,8 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
 
 //Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
 //buffers for the data and overlays
-class OceanSpectrometer {
+class spectrometer {
+public:
     std::vector<double> readBuffer;
     std::vector<double> readBufferMinusDark;
     std::vector<double> wavelengthsBuffer;
@@ -127,55 +128,22 @@ class OceanSpectrometer {
             dataMinusDark[i] = dataVector[i] - darkSpectrum[i];
         }
     }
-public:
+
     bool hasOverlay0 = false;
     bool hasOverlay1 = false;
     bool hasOverlay2 = false;
-	void init(long deviceIDinput) {
-		deviceID = deviceIDinput;
-		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
-        readBuffer = std::vector<double>(pixelCount);
-        readBufferMinusDark = std::vector<double>(pixelCount);
-        overlay0 = std::vector<double>(pixelCount);
-        overlay0MinusDark = std::vector<double>(pixelCount);
-        overlay1 = std::vector<double>(pixelCount);
-        overlay1MinusDark = std::vector<double>(pixelCount);
-        overlay2 = std::vector<double>(pixelCount);
-        overlay2MinusDark = std::vector<double>(pixelCount);
-        darkSpectrum = std::vector<double>(pixelCount);
-        wavelengthsBuffer = std::vector<double>(pixelCount);
-		
-        if (error != 0 ) {
-            isInitialized = false;
-		}
-		else {
-            isInitialized = true;
-            odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
-		}
-	}
+    virtual ~spectrometer(){}
+	virtual void init(long deviceIDinput) = 0;
+    virtual void release() = 0;
+    virtual void setIntegrationTime(unsigned long integrationTimeMicroseconds) = 0;
+    virtual void acquireSingle() = 0;
+    virtual std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) = 0;
+    virtual void acquireOverlay(int overlayIndex) = 0;
+    virtual void acquireDarkSpectrum() = 0;
+
     bool initialized() {
         return isInitialized;
     }
-
-    void release() {
-        odapi_close_device(deviceID, &error);
-    }
-
-    void setIntegrationTime(unsigned long integrationTimeMicroseconds) {
-        odapi_set_integration_time_micros(deviceID, &error, integrationTimeMicroseconds);
-    }
-
-    void acquireSingle() {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
-        subtractDark(readBuffer, readBufferMinusDark);
-    }
-
-    std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
-        subtractDark(readBuffer, readBufferMinusDark);
-        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
-    }
-
     void lock() {
         isLocked = true;
     }
@@ -185,33 +153,8 @@ public:
     bool checkLock() {
         return isLocked;
     }
-    void acquireOverlay(int overlayIndex) {        
-        switch (overlayIndex) {
-        case 0:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
-            subtractDark(overlay0, overlay0MinusDark);
-            lastOverlay = 0;
-            hasOverlay0 = true;
-            break;
-        case 1:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay1.data(), pixelCount);
-            subtractDark(overlay1, overlay1MinusDark);
-            lastOverlay = 1;
-            hasOverlay1 = true;
-            break;
-        case 2:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay2.data(), pixelCount);
-            subtractDark(overlay2, overlay2MinusDark);
-            lastOverlay = 2;
-            hasOverlay2 = true;
-            break;
-        }
-    }
-    void acquireDarkSpectrum() {
-        darkSpectrum = std::vector<double>(pixelCount);
-        odapi_get_formatted_spectrum(deviceID, &error, darkSpectrum.data(), pixelCount);
-        hasDarkSpectrum = true;
-    }
+
+
     void disableDarkSpectrum() {
         hasDarkSpectrum = false;
     }
@@ -305,6 +248,81 @@ public:
         return error;
     }
 };
+
+
+class OceanSpectrometer : public spectrometer{
+public:
+	void init(long deviceIDinput) override {
+		deviceID = deviceIDinput;
+		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
+        readBuffer = std::vector<double>(pixelCount);
+        readBufferMinusDark = std::vector<double>(pixelCount);
+        overlay0 = std::vector<double>(pixelCount);
+        overlay0MinusDark = std::vector<double>(pixelCount);
+        overlay1 = std::vector<double>(pixelCount);
+        overlay1MinusDark = std::vector<double>(pixelCount);
+        overlay2 = std::vector<double>(pixelCount);
+        overlay2MinusDark = std::vector<double>(pixelCount);
+        darkSpectrum = std::vector<double>(pixelCount);
+        wavelengthsBuffer = std::vector<double>(pixelCount);
+		
+        if (error != 0 ) {
+            isInitialized = false;
+		}
+		else {
+            isInitialized = true;
+            odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
+		}
+	}
+
+    void release() override {
+        odapi_close_device(deviceID, &error);
+    }
+
+    void setIntegrationTime(unsigned long integrationTimeMicroseconds) override {
+        odapi_set_integration_time_micros(deviceID, &error, integrationTimeMicroseconds);
+    }
+
+    void acquireSingle() override {
+        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
+        subtractDark(readBuffer, readBufferMinusDark);
+    }
+
+    std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) override {
+        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
+        subtractDark(readBuffer, readBufferMinusDark);
+        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
+    }
+
+    void acquireOverlay(int overlayIndex) override {        
+        switch (overlayIndex) {
+        case 0:
+            odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
+            subtractDark(overlay0, overlay0MinusDark);
+            lastOverlay = 0;
+            hasOverlay0 = true;
+            break;
+        case 1:
+            odapi_get_formatted_spectrum(deviceID, &error, overlay1.data(), pixelCount);
+            subtractDark(overlay1, overlay1MinusDark);
+            lastOverlay = 1;
+            hasOverlay1 = true;
+            break;
+        case 2:
+            odapi_get_formatted_spectrum(deviceID, &error, overlay2.data(), pixelCount);
+            subtractDark(overlay2, overlay2MinusDark);
+            lastOverlay = 2;
+            hasOverlay2 = true;
+            break;
+        }
+    }
+    void acquireDarkSpectrum() override {
+        darkSpectrum = std::vector<double>(pixelCount);
+        odapi_get_formatted_spectrum(deviceID, &error, darkSpectrum.data(), pixelCount);
+        hasDarkSpectrum = true;
+    }
+};
+
 std::vector<OceanSpectrometer> spectrometerSet;
 
 //Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
@@ -317,8 +335,7 @@ class batchAcquisition {
     size_t spectrumSize = 0;
     size_t acquisitionCount = 0;
 public:
-
-    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
         if (N == 0) return;
         s.lock();
         spectrumSize = s.size();
@@ -555,14 +572,14 @@ public:
         spectralPhaseM2 = spectralPhaseMean;
     }
 
-    void acquireNewPhase(OceanSpectrometer& s) {
+    void acquireNewPhase(spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
         calculatePhase();
         updateWithNewPhase();
         calculateGroupDelay();
     }
 
-    void acquireNewInterferogram(OceanSpectrometer& s) {
+    void acquireNewInterferogram(spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
     }
     void calculatePhase() {
@@ -657,7 +674,7 @@ public:
     bool checkConfigurationStatus() {
         return isConfigured;
     }
-    void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+    void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
@@ -673,7 +690,7 @@ public:
         referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
     }
 
-    void acquireReferenceB(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, OceanSpectrometer& s) {
+    void acquireReferenceB(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();

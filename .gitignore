@@ -365,3 +365,4 @@ FodyWeavers.xsd
 /ScarabWin64.zip
 /share
 /ScarabWin64/share/glib-2.0
+.vscode/settings.json
