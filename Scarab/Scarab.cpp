@@ -134,8 +134,6 @@ public:
     bool hasOverlay1 = false;
     bool hasOverlay2 = false;
     virtual ~spectrometer(){}
-	virtual void init(long deviceIDinput) = 0;
-    virtual void release() = 0;
     virtual void setIntegrationTime(unsigned long integrationTimeMicroseconds) = 0;
     virtual void acquireSingle() = 0;
     virtual std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) = 0;
@@ -154,12 +152,9 @@ public:
     bool checkLock() {
         return isLocked;
     }
-
-
     void disableDarkSpectrum() {
         hasDarkSpectrum = false;
     }
-
     int getOverlayCount() {
         int overlayCount = 0;
         if (hasOverlay0) overlayCount++;
@@ -167,7 +162,6 @@ public:
         if (hasOverlay2) overlayCount++;
         return overlayCount;
     }
-
     double* getOverlay(int overlayIndex) {
         switch (overlayIndex) {
         case 0:
@@ -253,7 +247,7 @@ public:
 
 class OceanSpectrometer : public spectrometer{
 public:
-	void init(long deviceIDinput) override {
+	OceanSpectrometer(long deviceIDinput) {
 		deviceID = deviceIDinput;
 		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
         readBuffer = std::vector<double>(pixelCount);
@@ -275,8 +269,7 @@ public:
             odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
 		}
 	}
-
-    void release() override {
+    virtual ~OceanSpectrometer() override {
         odapi_close_device(deviceID, &error);
     }
 
@@ -957,7 +950,7 @@ public:
         int error = 0;
         console.cPrint("RID count {}\n", retrievedIdCount);
 
-        spectrometerSet = std::vector<std::unique_ptr<spectrometer>>(deviceIdCount);
+        spectrometerSet = std::vector<std::unique_ptr<spectrometer>>();
         
 		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
@@ -995,7 +988,7 @@ public:
                 std::string newElement = Sformat("{}: {}", i, deviceName);
                 pulldowns[0].addElement(newElement.c_str());
 			}
-            (*spectrometerSet[i]).init(deviceIds[i]);
+            spectrometerSet.push_back(std::make_unique<OceanSpectrometer>(deviceIds[i]));
 		}
 	}
 
@@ -1003,9 +996,6 @@ public:
 mainGui theGui;
 
 void destroyMainWindowCallback() {
-    for (int i = 0; i < spectrometerSet.size(); i++) {
-        (*spectrometerSet[i]).release();
-    }
 }
 
 void handleRunButton() {
