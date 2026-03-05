@@ -28,7 +28,7 @@
       "buildsystem": "simple",
       "build-commands": [
         "mkdir -p /app/include /app/lib",
-        "tar --strip-components=1 -xzf OD_components.tar.gz -C /app/usr"
+        "tar --strip-components=1 -xzf OD_components.tar.gz -C /app"
       ],
       "sources": [
         {

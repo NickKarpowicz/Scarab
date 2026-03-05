@@ -1897,7 +1897,7 @@ static void activate(GtkApplication* app, gpointer user_data) {
 }
 
 int main(int argc, char** argv) {
-    GtkApplication* app = gtk_application_new("nickkarpowicz.scarab", (GApplicationFlags)0);
+    GtkApplication* app = gtk_application_new("nickkarpowicz.github.io.Scarab", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
 }
