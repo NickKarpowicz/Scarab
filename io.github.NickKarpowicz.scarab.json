@@ -1,0 +1,96 @@
+{
+  "id": "io.github.NickKarpowicz.LightwaveExplorer",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "49",
+  "sdk": "org.gnome.Sdk",
+  "command": "scarab",
+  "finish-args": [
+    "--share=ipc",
+    "--device=dri",
+    "--socket=wayland",
+    "--socket=fallback-x11"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/cmake",
+    "/lib/pkgconfig",
+    "/lib/*.la",
+    "/lib/*.a",
+    "/mkspecs",
+    "/share/aclocal",
+    "/share/info",
+    "/share/man",
+    "/opt"
+  ],
+  "modules": [
+    {
+      "name": "ocean",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/usr/include /app/usr/lib",
+        "tar --strip-components=1 -xzf OD_components.tar.gz -C /app/usr"
+      ],
+      "sources": [
+        {
+          "type": "file",
+          "url": "https://datashare.mpcdf.mpg.de/public.php/dav/files/rpxPyMEQrWqwKBW",
+          "sha256": "b3c7aaf8cb38e8e682c3e3191547deb4c9675130f5f6fa2fee93066be6aa64f9",
+          "dest-filename": "OD_components.tar.gz"
+        }
+      ]
+    },
+    {
+      "name": "oneAPI",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/usr/lib/sdk/llvm19/bin",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm19/lib"
+      },
+      "build-commands": [
+        "chmod +x intel-cpp-essentials-2025.2.1.5_offline.sh",
+        "./intel-cpp-essentials-2025.2.1.5_offline.sh -x -f webimage_extracted",
+        "rm intel-cpp-essentials-2025.2.1.5_offline.sh",
+        "webimage_extracted/intel-cpp-essentials-2025.2.1.5_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel --install-dir=/app/opt/intel/oneapi --eula=accept",
+        "mkdir -p /app/lib",
+        "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
+        "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/",
+        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib32",
+        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib/*.so*",
+        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl.a",
+        "rm -rf /app/opt/intel/oneapi/conda_channel"
+      ],
+      "sources": [
+        {
+          "type": "file",
+          "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/945570e3-ac79-47be-b500-2a018e99f172/intel-cpp-essentials-2025.2.1.5_offline.sh",
+          "sha256": "d593d22b97ee01cecc7d00eab1106fd93ab693e422a0e6f4fb65cab041806d1f"
+        }
+      ]
+    },
+    {
+      "name": "gcem",
+      "buildsystem": "cmake-ninja",
+      "config-opts": ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/kthohr/gcem",
+          "tag": "v1.18.0",
+          "commit": "012ae73c6d0a2cb09ffe86475f5c6fba3926e200"
+        }
+      ]
+    },
+    {
+      "name": "Scarab",
+      "buildsystem": "cmake-ninja",
+      "config-opts": ["-DCMAKE_CXX_FLAGS='-O3 -march=x86-64-v3'"],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/NickKarpowicz/scarab",
+          "branch": "dev20261"
+        }
+      ]
+    }
+  ]
+}

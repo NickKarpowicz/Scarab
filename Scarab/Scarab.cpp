@@ -6,7 +6,7 @@
 #include <memory>
 #include <fftw3_mkl.h>
 #include "api/OceanDirectAPI.h"
-#include "Frontend/LightwaveExplorerGraphicalClasses.h"
+#include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
 
 void destroyMainWindowCallback();
 bool updateDisplay();
@@ -219,8 +219,8 @@ public:
     }
 
     void appendBufferTo(std::vector<double>& outputBuffer) {
-        if (!hasDarkSpectrum) { 
-            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end()); 
+        if (!hasDarkSpectrum) {
+            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end());
         }
         else {
             outputBuffer.insert(outputBuffer.end(), readBufferMinusDark.begin(), readBufferMinusDark.end());
@@ -260,7 +260,7 @@ public:
         overlay2MinusDark = std::vector<double>(pixelCount);
         darkSpectrum = std::vector<double>(pixelCount);
         wavelengthsBuffer = std::vector<double>(pixelCount);
-		
+
         if (error != 0 ) {
             isInitialized = false;
 		}
@@ -278,7 +278,7 @@ public:
     }
 
     void acquireSingle() override {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
+        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
         subtractDark(readBuffer, readBufferMinusDark);
     }
 
@@ -288,7 +288,7 @@ public:
         return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
     }
 
-    void acquireOverlay(int overlayIndex) override {        
+    void acquireOverlay(int overlayIndex) override {
         switch (overlayIndex) {
         case 0:
             odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
@@ -459,7 +459,7 @@ class spectralInterferometry {
         fftReferenceAReal = timeFilter;
         fftReferenceBReal = timeFilter;
         fftDataReal = timeFilter;
-        
+
     }
     void destroyFFT() {
         fftw_destroy_plan(fftPlanD2Z);
@@ -480,9 +480,9 @@ class spectralInterferometry {
         double dt = 1.0 / (Nfreq * dF);
         std::complex<double> ii(0.0, 1.0);
         for (int i = 0; i < (Nfreq / 2 + 1); i++) {
-            hilbertTimeBuffer[i] *= 
+            hilbertTimeBuffer[i] *=
                 std::exp(-std::pow(
-                    (static_cast<double>(i) * dt - filter0) / filterSigma, filterOrd) 
+                    (static_cast<double>(i) * dt - filter0) / filterSigma, filterOrd)
                     / sqrt(2.0));
             hilbertTimeBuffer2[i] = ii * hilbertTimeBuffer[i];
         }
@@ -502,7 +502,7 @@ class spectralInterferometry {
         }
         else {
             phaseCount = 0;
-            for (int i = 0; i < Nfreq; i++) { 
+            for (int i = 0; i < Nfreq; i++) {
                 spectralPhaseMean[i] = spectralPhase[i];
                 spectralPhaseM2[i] = 0.0;
             }
@@ -737,7 +737,7 @@ class mainGui {
     bool isRunningLive = false;
     bool noSpectrometers = false;
     int sliderTarget = 0;
-    
+
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[18];
@@ -832,12 +832,12 @@ public:
         buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
-        
+
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handleReferenceA);
         buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
         buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handleResetPhase);
         buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleSavePhase);
-        
+
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -867,7 +867,7 @@ public:
         textBoxes[14].init(parentHandle, textCol4, 8, textWidth, 1);
         textBoxes[13].overwritePrint(std::string("0"));
         textBoxes[14].overwritePrint(std::string("10"));
-   
+
 
         textBoxes[15].init(parentHandle, textCol3, 9, 2, 1);
         textBoxes[15].setMaxCharacters(6);
@@ -877,7 +877,7 @@ public:
         textBoxes[17].setMaxCharacters(6);
         textBoxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
         textBoxes[15].overwritePrint(std::string("2048"));
-        
+
         textBoxes[18].init(parentHandle, textCol3, 11, 2, 1);
         textBoxes[18].setMaxCharacters(6);
         textBoxes[19].init(parentHandle, textCol4, 11, 2, 1);
@@ -927,7 +927,7 @@ public:
         pulldowns[1].init(parentHandle, 0, 1, 8, 1);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
-        
+
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
         initializeSpectrometers();
@@ -951,7 +951,7 @@ public:
         console.cPrint("RID count {}\n", retrievedIdCount);
 
         spectrometerSet = std::vector<std::unique_ptr<spectrometer>>();
-        
+
 		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
             if (error) {
@@ -1168,7 +1168,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         theGui.console.cPrint("Not initialized - error {}\n",(*spectrometerSet[0]).getErrorCode());
         return;
     }
-   
+
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1177,7 +1177,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-        
+
     }
 
     bool forceX = false;
@@ -1199,12 +1199,12 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         svgPath.append("_Spectrum.svg");
         sPlot.SVGPath = svgPath;
     }
-    
+
     if (theGui.runningLive() && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
         (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         (*spectrometerSet[activeSpectrometer]).acquireSingle();
     }
-    
+
     LweColor mainColor(0.5, 0, 1, 1);
     if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
         mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
@@ -1266,7 +1266,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         }
         if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(1);
         else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
-       
+
         if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
     }
     sPlot.plot(cr);
@@ -1883,7 +1883,7 @@ bool updateDisplay() {
 void savePathCallback() {
 #ifdef __APPLE__
     theGui.pathBuffer = pathFromAppleSaveDialog();
-#endif 
+#endif
     theGui.requestSavePathUpdate();
 }
 
