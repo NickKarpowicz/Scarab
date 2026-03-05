@@ -83,7 +83,10 @@
     {
       "name": "Scarab",
       "buildsystem": "cmake-ninja",
-      "config-opts": ["-DCMAKE_CXX_FLAGS='-O3 -march=x86-64-v3'"],
+      "config-opts": [
+        "-DCMAKE_CXX_FLAGS='-O3 -march=x86-64-v3'",
+        "-DFLATPAK=1"
+      ],
       "sources": [
         {
           "type": "git",

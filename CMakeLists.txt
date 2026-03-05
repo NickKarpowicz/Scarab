@@ -21,6 +21,7 @@ if(UNIX AND NOT APPLE)
     pkg_check_modules(GTK4 gtk4)
 
     include_directories(${MKL_ROOT}/include/fftw)
+    include_directories(${MKL_ROOT}/include)
     include_directories(${GTK4_INCLUDE_DIRS})
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
     include_directories(app/usr/include)
