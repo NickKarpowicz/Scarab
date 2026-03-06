@@ -40,6 +40,12 @@ add_compile_options(-fopenmp)
 add_executable(scarab
     Scarab/Scarab.cpp)
 target_link_libraries(scarab ${GTK4_LIBRARIES})
-target_link_libraries(scarab -lm -loceandirect)
+if(WINDOWS)
+    target_link_libraries(scarab OceanDirect)
+else()
+    target_link_libraries(scarab oceandirect)
+endif()
+
+target_link_libraries(scarab -lm)
 target_link_libraries(scarab OpenMP::OpenMP_CXX)
 install(TARGETS scarab)
