@@ -21,7 +21,6 @@ jobs:
       - name: Install dependencies with choco and vcpkg
         run: |
           choco install -y wget pkgconfiglite --no-progress
-          C:\vcpkg\vcpkg.exe install gtk
       - name: Build Scarab
         run: |
           cmake -E make_directory build
