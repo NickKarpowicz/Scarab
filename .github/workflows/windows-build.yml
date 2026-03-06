@@ -43,6 +43,7 @@ jobs:
           Remove-Item .\Release\bin\*.pdb
           Remove-Item .\Release\bin\*.exe
           Copy-Item .\gtk\bin\gdbus.exe -Destination .\Release\bin\gdbus.exe
+          Copy-Item .\Release\scarab.exe -Destination .\Release\bin\scarab.exe
 
       - name: upload-unsigned-artifact
         id: upload-unsigned-artifact
