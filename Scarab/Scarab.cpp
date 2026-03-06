@@ -989,7 +989,6 @@ public:
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
 
-        g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 12, 1);

@@ -843,10 +843,6 @@ public:
     void removeUpdateFunction() {
         g_source_remove(updaterID);
     }
-    void connectDestructionFunction(auto function) {
-        std::lock_guard GTKlock(GTKmutex);
-        g_signal_connect(window, "destroy", G_CALLBACK(function), NULL);
-    }
 };
 
 class LweDrawBox : public LweGuiElement {
