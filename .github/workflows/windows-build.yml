@@ -34,6 +34,16 @@ jobs:
           Remove-Item .\Release\*.exp -Force
           Remove-Item .\Release\*.lib
           Remove-Item .\Release\*.runsettings
+          New-Item -ItemType Directory -Path .\Release\bin
+          New-Item -ItemType Directory -Path .\Release\lib\gdk-pixbuf-2.0
+          New-Item -ItemType Directory -Path .\Release\share\glib-2.0
+          Copy-Item -Path .\gtk\bin\* -Destination .\Release\bin -Recurse -Force
+          Copy-Item -Path .\gtk\lib\gdk-pixbuf-2.0\* -Destination .\Release\lib\gdk-pixbuf-2.0 -Recurse -Force
+          Copy-Item -Path .\gtk\share\glib-2.0\* -Destination .\Release\share\glib-2.0 -Recurse -Force
+          Remove-Item .\Release\bin\*.pdb
+          Remove-Item .\Release\bin\*.exe
+          Copy-Item .\gtk\bin\gdbus.exe -Destination .\Release\bin\gdbus.exe
+
       - name: upload-unsigned-artifact
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v4
