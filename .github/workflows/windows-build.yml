@@ -44,7 +44,8 @@ jobs:
           Remove-Item .\Release\bin\*.exe
           Copy-Item .\gtk\bin\gdbus.exe -Destination .\Release\bin\gdbus.exe
           Copy-Item .\Release\scarab.exe -Destination .\Release\bin\scarab.exe
-
+          Remove-Item .\Release\scarab.exe
+          Copy-Item .\OD_components_win\OceanDirect.dll .\Release\bin\OceanDirect.dll
       - name: upload-unsigned-artifact
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v4
