@@ -18,6 +18,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drop_down_change_callback();
 void handleGetOverlay0();
 void handleGetOverlay1();
 void handleGetOverlay2();
@@ -976,6 +977,15 @@ public:
         pulldowns[1].addElement("Interferometry: phase");
         pulldowns[1].addElement("Interferometry: Group delay");
         pulldowns[1].init(parentHandle, 0, 1, 8, 1);
+        g_signal_connect(pulldowns[1].elementHandle, "notify::selected", G_CALLBACK(drop_down_change_callback), NULL);
+        gtk_widget_set_visible(buttons[9].elementHandle, false);
+        gtk_widget_set_visible(buttons[10].elementHandle, false);
+        gtk_widget_set_visible(buttons[11].elementHandle, false);
+        gtk_widget_set_visible(buttons[12].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[18].label, false);
+        gtk_widget_set_visible(textBoxes[18].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[19].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[20].elementHandle, false);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
 
@@ -1069,6 +1079,18 @@ void handleRefreshRequest() {
 
 void handleGetOverlay0() {
     (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireOverlay(0);
+}
+
+void drop_down_change_callback(){
+    bool visibility = theGui.pulldowns[1].getValue()>2;
+    gtk_widget_set_visible(theGui.buttons[9].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[10].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[11].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[12].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[18].label, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[18].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[19].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[20].elementHandle, visibility);
 }
 
 void handleGetOverlay1() {
@@ -1215,7 +1237,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     }
     if (theGui.noSpectrometersFound()) return;
     int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if (!(*spectrometerSet[activeSpectrometer]).initialized()) {
+    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n",(*spectrometerSet[0]).getErrorCode());
         return;
     }
@@ -1251,7 +1273,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         sPlot.SVGPath = svgPath;
     }
 
-    if (theGui.runningLive() && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
+    if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
         (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         (*spectrometerSet[activeSpectrometer]).acquireSingle();
     }
@@ -1327,7 +1349,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 
     if (theGui.noSpectrometersFound()) return;
     int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if (!(*spectrometerSet[activeSpectrometer]).initialized()) {
+    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n", (*spectrometerSet[0]).getErrorCode());
         return;
     }
@@ -1381,7 +1403,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
         frequencies[i] = fMin + static_cast<double>(i) * dF;
     }
     std::vector<double> liveSpectrum;
-    if (theGui.runningLive() && !(*spectrometerSet[activeSpectrometer]).checkLock() && Nfreq > 0) {
+    if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock() && Nfreq > 0) {
         (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         liveSpectrum = (*spectrometerSet[activeSpectrometer]).acquireSingleFrequency(frequencies);
     }
@@ -1569,6 +1591,7 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
 }
 
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     if (!theInterferenceController.checkConfigurationStatus()) handleResetController();
     LwePlot sPlot;
@@ -1662,6 +1685,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 }
 
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1755,6 +1779,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
 
 
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1840,6 +1865,7 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 }
 
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
