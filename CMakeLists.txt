@@ -42,5 +42,5 @@ add_executable(scarab
     Scarab/Scarab.cpp)
 target_link_libraries(scarab ${GTK4_LIBRARIES})
 target_link_libraries(scarab fmt::fmt -lm -loceandirect)
-target_link_libraries(scarab PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(scarab OpenMP::OpenMP_CXX)
 install(TARGETS scarab)
