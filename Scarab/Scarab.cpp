@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <complex>
 #include <memory>
-#include <fftw3_mkl.h>
+#include "ExternalLibraries/pocketfft_hdronly.h"
 #include "api/OceanDirectAPI.h"
 #include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
 
@@ -420,8 +420,6 @@ class spectralInterferometry {
     std::vector<std::complex<double>> hilbertTimeBuffer2;
     std::vector<double> hilbertRealBuffer;
     std::vector<double> hilbertImagBuffer;
-    fftw_plan fftPlanD2Z;
-    fftw_plan fftPlanZ2D;
     bool hasData = false;
     bool isConfigured = false;
     bool useAveraging = true;
@@ -444,9 +442,9 @@ class spectralInterferometry {
     void setupFFT() {
         std::unique_ptr<double[]> setupWorkD(new double[Nfreq]);
         std::unique_ptr<std::complex<double>[]> setupWorkC(new std::complex<double>[Nfreq]);
-        const int fftw1[1] = { static_cast<int>(Nfreq) };
-        fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), FFTW_MEASURE);
-        fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), FFTW_MEASURE);
+        //const int fftw1[1] = { static_cast<int>(Nfreq) };
+        //fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), FFTW_MEASURE);
+        //fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), FFTW_MEASURE);
         FFTsize = Nfreq;
         hilbertTimeBuffer = std::vector<std::complex<double>>(Nfreq/2 + 1);
         hilbertTimeBuffer2 = hilbertTimeBuffer;
@@ -459,11 +457,8 @@ class spectralInterferometry {
         fftReferenceAReal = timeFilter;
         fftReferenceBReal = timeFilter;
         fftDataReal = timeFilter;
-
     }
     void destroyFFT() {
-        fftw_destroy_plan(fftPlanD2Z);
-        fftw_destroy_plan(fftPlanZ2D);
     }
 
     void filteredHilbert(std::vector<double>& inData,
@@ -476,7 +471,18 @@ class spectralInterferometry {
             destroyFFT();
             setupFFT();
         }
-        fftw_execute_dft_r2c(fftPlanD2Z, inData.data(), (fftw_complex*)hilbertTimeBuffer.data());
+
+        //fftw_execute_dft_r2c(fftPlanD2Z, inData.data(), (fftw_complex*)hilbertTimeBuffer.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{inData.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            inData.data(),
+            hilbertTimeBuffer.data(),
+            1.0);
+
         double dt = 1.0 / (Nfreq * dF);
         std::complex<double> ii(0.0, 1.0);
         for (int i = 0; i < (Nfreq / 2 + 1); i++) {
@@ -486,8 +492,26 @@ class spectralInterferometry {
                     / sqrt(2.0));
             hilbertTimeBuffer2[i] = ii * hilbertTimeBuffer[i];
         }
-        fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer.data(), outDataReal.data());
-        fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer2.data(), outDataImag.data());
+
+        pocketfft::c2r(
+            pocketfft::shape_t{outDataReal.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            hilbertTimeBuffer.data(),
+            outDataReal.data(),
+            1.0);
+
+        pocketfft::c2r(
+            pocketfft::shape_t{outDataReal.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            hilbertTimeBuffer2.data(),
+            outDataImag.data(),
+            1.0);
     }
 
     void updateWithNewPhase() {
@@ -644,9 +668,36 @@ public:
         filterOrder = ord;
     }
     void generateTimePlot() {
-        fftw_execute_dft_r2c(fftPlanD2Z, interferenceDataInterpolated.data(), (fftw_complex*)hilbertTimeBuffer.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceB.data());
+        //fftw_execute_dft_r2c(fftPlanD2Z, interferenceDataInterpolated.data(), (fftw_complex*)hilbertTimeBuffer.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{interferenceDataInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            interferenceDataInterpolated.data(),
+            hilbertTimeBuffer.data(),
+            1.0);
+        //fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{referenceDataAInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            referenceDataAInterpolated.data(),
+            fftReferenceA.data(),
+            1.0);
+        //fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceB.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{referenceDataBInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            referenceDataBInterpolated.data(),
+            fftReferenceB.data(),
+            1.0);
         double dt = 1.0e3 / (Nfreq * dF);
         double maxSignal = 0.0;
         for (int i = 0; i < (Nfreq / 2 + 1); i++) {

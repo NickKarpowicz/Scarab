@@ -41,34 +41,6 @@
       ]
     },
     {
-      "name": "oneAPI",
-      "buildsystem": "simple",
-      "build-options": {
-        "append-path": "/usr/lib/sdk/llvm19/bin",
-        "prepend-ld-library-path": "/usr/lib/sdk/llvm19/lib"
-      },
-      "build-commands": [
-        "chmod +x intel-cpp-essentials-2025.2.1.5_offline.sh",
-        "./intel-cpp-essentials-2025.2.1.5_offline.sh -x -f webimage_extracted",
-        "rm intel-cpp-essentials-2025.2.1.5_offline.sh",
-        "webimage_extracted/intel-cpp-essentials-2025.2.1.5_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel --install-dir=/app/opt/intel/oneapi --eula=accept",
-        "mkdir -p /app/lib",
-        "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
-        "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/",
-        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib32",
-        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib/*.so*",
-        "rm -rf /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl.a",
-        "rm -rf /app/opt/intel/oneapi/conda_channel"
-      ],
-      "sources": [
-        {
-          "type": "file",
-          "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/945570e3-ac79-47be-b500-2a018e99f172/intel-cpp-essentials-2025.2.1.5_offline.sh",
-          "sha256": "d593d22b97ee01cecc7d00eab1106fd93ab693e422a0e6f4fb65cab041806d1f"
-        }
-      ]
-    },
-    {
       "name": "gcem",
       "buildsystem": "cmake-ninja",
       "config-opts": ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"],
