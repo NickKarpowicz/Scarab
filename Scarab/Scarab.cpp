@@ -100,6 +100,9 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
 //buffers for the data and overlays
 class Spectrometer {
 public:
+    long deviceID;
+    int error;
+    int pixelCount;
     std::vector<double> readBuffer;
     std::vector<double> readBufferMinusDark;
     std::vector<double> wavelengthsBuffer;
@@ -115,11 +118,21 @@ public:
     std::vector<double> darkSpectrum;
     bool hasDarkSpectrum = false;
     int lastOverlay = -1;
-    int pixelCount = 0;
     bool isInitialized = false;
-    long deviceID = 0;
-    int error = 0;
     bool isLocked = false;
+    Spectrometer(long _deviceID, int _pixelCount) :
+        deviceID(_deviceID),
+        pixelCount(_pixelCount),
+        readBuffer(pixelCount),
+        readBufferMinusDark(pixelCount),
+        overlay0(pixelCount),
+        overlay0MinusDark(pixelCount),
+        overlay1(pixelCount),
+        overlay1MinusDark(pixelCount),
+        overlay2(pixelCount),
+        overlay2MinusDark(pixelCount),
+        darkSpectrum(pixelCount),
+        wavelengthsBuffer(pixelCount){}
     void subtractDark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
         if (!hasDarkSpectrum) {
             dataMinusDark = dataVector;
@@ -248,19 +261,9 @@ public:
 
 class OceanSpectrometer : public Spectrometer{
 public:
-	OceanSpectrometer(long deviceIDinput) {
-		deviceID = deviceIDinput;
-		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
-        readBuffer = std::vector<double>(pixelCount);
-        readBufferMinusDark = std::vector<double>(pixelCount);
-        overlay0 = std::vector<double>(pixelCount);
-        overlay0MinusDark = std::vector<double>(pixelCount);
-        overlay1 = std::vector<double>(pixelCount);
-        overlay1MinusDark = std::vector<double>(pixelCount);
-        overlay2 = std::vector<double>(pixelCount);
-        overlay2MinusDark = std::vector<double>(pixelCount);
-        darkSpectrum = std::vector<double>(pixelCount);
-        wavelengthsBuffer = std::vector<double>(pixelCount);
+	OceanSpectrometer(long deviceIDinput) :
+	    Spectrometer(deviceIDinput, odapi_get_formatted_spectrum_length(deviceIDinput, &error))
+	{
         isInitialized = (error==0);
         if(isInitialized) odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
 	}
