@@ -98,7 +98,7 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
 
 //Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
 //buffers for the data and overlays
-class spectrometer {
+class Spectrometer {
 public:
     std::vector<double> readBuffer;
     std::vector<double> readBufferMinusDark;
@@ -134,7 +134,7 @@ public:
     bool hasOverlay0 = false;
     bool hasOverlay1 = false;
     bool hasOverlay2 = false;
-    virtual ~spectrometer(){}
+    virtual ~Spectrometer(){}
     virtual void setIntegrationTime(unsigned long integrationTimeMicroseconds) = 0;
     virtual void acquireSingle() = 0;
     virtual std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) = 0;
@@ -246,7 +246,7 @@ public:
 };
 
 
-class OceanSpectrometer : public spectrometer{
+class OceanSpectrometer : public Spectrometer{
 public:
 	OceanSpectrometer(long deviceIDinput) {
 		deviceID = deviceIDinput;
@@ -261,14 +261,8 @@ public:
         overlay2MinusDark = std::vector<double>(pixelCount);
         darkSpectrum = std::vector<double>(pixelCount);
         wavelengthsBuffer = std::vector<double>(pixelCount);
-
-        if (error != 0 ) {
-            isInitialized = false;
-		}
-		else {
-            isInitialized = true;
-            odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
-		}
+        isInitialized = (error==0);
+        if(isInitialized) odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
 	}
     virtual ~OceanSpectrometer() override {
         odapi_close_device(deviceID, &error);
@@ -318,11 +312,11 @@ public:
     }
 };
 
-std::vector<std::unique_ptr<spectrometer>> spectrometerSet;
+std::vector<std::unique_ptr<Spectrometer>> spectrometerSet;
 
 //Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
 //to acquire and save the data
-class batchAcquisition {
+class BatchAcquisition {
     std::vector<double> data;
     std::vector<double> wavelengths;
     bool hasData = false;
@@ -330,7 +324,7 @@ class batchAcquisition {
     size_t spectrumSize = 0;
     size_t acquisitionCount = 0;
 public:
-    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         s.lock();
         spectrumSize = s.size();
@@ -389,9 +383,9 @@ public:
         return spectrumSize;
     }
 };
-batchAcquisition theBatch;
+BatchAcquisition theBatch;
 
-class spectralInterferometry {
+class SpectralInterferometry {
     std::vector<double> wavelengths;
     std::vector<double> frequencies;
     std::vector<double> wavelengthsOnFrequencyGrid;
@@ -544,10 +538,10 @@ class spectralInterferometry {
     }
 
 public:
-    spectralInterferometry() {
+    SpectralInterferometry() {
         setupFFT();
     }
-    ~spectralInterferometry() {
+    ~SpectralInterferometry() {
         destroyFFT();
     }
     void setAveraging(bool newState) {
@@ -591,14 +585,14 @@ public:
         spectralPhaseM2 = spectralPhaseMean;
     }
 
-    void acquireNewPhase(spectrometer& s) {
+    void acquireNewPhase(Spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
         calculatePhase();
         updateWithNewPhase();
         calculateGroupDelay();
     }
 
-    void acquireNewInterferogram(spectrometer& s) {
+    void acquireNewInterferogram(Spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
     }
     void calculatePhase() {
@@ -720,7 +714,7 @@ public:
     bool checkConfigurationStatus() {
         return isConfigured;
     }
-    void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireReferenceA(BatchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
@@ -736,7 +730,7 @@ public:
         referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
     }
 
-    void acquireReferenceB(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireReferenceB(BatchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
@@ -777,10 +771,10 @@ public:
         }
     }
 };
-spectralInterferometry theInterferenceController;
+SpectralInterferometry theInterferenceController;
 
 //Main class for controlling the interface
-class mainGui {
+class MainGui {
     bool queueUpdate = false;
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
@@ -1010,7 +1004,7 @@ public:
         int error = 0;
         console.cPrint("RID count {}\n", retrievedIdCount);
 
-        spectrometerSet = std::vector<std::unique_ptr<spectrometer>>();
+        spectrometerSet = std::vector<std::unique_ptr<Spectrometer>>();
 
 		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
@@ -1053,7 +1047,7 @@ public:
 	}
 
 };
-mainGui theGui;
+MainGui theGui;
 
 void destroyMainWindowCallback() {
 }
