@@ -17,8 +17,6 @@ jobs:
       id-token: write
       contents: write
       attestations: write
-    env:
-      WINDOWS_OD_URL: ${{ secrets.WINDOWS_OD_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies with choco and vcpkg
@@ -28,7 +26,7 @@ jobs:
         run: |
           cmake -E make_directory build
           cd build
-          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS="/O2 /arch:AVX /fp:fast /EHsc" -DWINDOWS_OD_URL=$WINDOWS_OD_URL
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS="/O2 /arch:AVX /fp:fast /EHsc" -DWINDOWS_OD_URL:STRING="${{ secrets.WINDOWS_OD_URL }}"
           cmake --build . --config Release
         shell: cmd
       - name: Clean up distribution folder
