@@ -98,7 +98,7 @@ Beneath the plot, there are a few more buttons and controls. These are:
 
 
 # Build requirements
-if you want to build it yourself, you'll need [Ocean Direct](https://www.oceaninsight.com/products/software/drivers/oceandirect/) from Ocean Insight. Additionally, it depends on the [GTK4](https://www.gtk.org) GUI library. This should be available on any Linux system. The Windows build will obtain it automatically.
+if you want to build it yourself, you'll need [Ocean Direct](https://www.oceanoptics.com/software/). Additionally, it depends on the [GTK4](https://www.gtk.org) GUI library. This should be available on any Linux system. The Windows build will obtain it automatically.
 
 # Linux build instructions
 First, you'll have to install Ocean Direct. It is assumed to be installed in the default location (/usr/local/OceanOptics). 
@@ -119,7 +119,7 @@ cmake ..
 cmake --build .
 ```
 
-This will a 'scarab' binary in the build directory. You can install it with 
+This will create a 'scarab' binary in the build directory. You can install it with 
 ```
 sudo cmake --install .
 ```
