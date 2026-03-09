@@ -103,9 +103,9 @@ if you want to build it yourself, you'll need [Ocean Direct](https://www.oceanin
 # Linux build instructions
 First, you'll have to install Ocean Direct. It is assumed to be installed in the default location (/usr/local/OceanOptics). 
 
-You'll have to install the packages needed for the build process, including gcc, GTK, fmt, and ninja. On Fedora it can be done with:
+You'll have to install the packages needed for the build process: git, cmake, gcc, and GTK. On Fedora it can be done with:
 ```
-sudo dnf install gtk4-devel git g++
+sudo dnf install gtk4-devel git g++ cmake
 ```
 
 
