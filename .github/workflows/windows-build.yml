@@ -1,0 +1,55 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    environment: Windows build
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies with choco and vcpkg
+        run: |
+          choco install -y wget pkgconfiglite --no-progress
+      - name: Build Scarab
+        run: |
+          cmake -E make_directory build
+          cd build
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS="/O2 /arch:AVX /fp:fast /EHsc" -DWINDOWS_OD_URL:STRING="${{ secrets.WINDOWS_OD_URL }}"
+          cmake --build . --config Release
+        shell: cmd
+      - name: Clean up distribution folder
+        run: |
+          cd build
+          Remove-Item .\Release\*.exp -Force
+          Remove-Item .\Release\*.lib
+          Remove-Item .\Release\*.runsettings
+          New-Item -ItemType Directory -Path .\Release\bin
+          New-Item -ItemType Directory -Path .\Release\lib\gdk-pixbuf-2.0
+          New-Item -ItemType Directory -Path .\Release\share\glib-2.0
+          Copy-Item -Path .\gtk\bin\* -Destination .\Release\bin -Recurse -Force
+          Copy-Item -Path .\gtk\lib\gdk-pixbuf-2.0\* -Destination .\Release\lib\gdk-pixbuf-2.0 -Recurse -Force
+          Copy-Item -Path .\gtk\share\glib-2.0\* -Destination .\Release\share\glib-2.0 -Recurse -Force
+          Remove-Item .\Release\bin\*.pdb
+          Remove-Item .\Release\bin\*.exe
+          Copy-Item .\gtk\bin\gdbus.exe -Destination .\Release\bin\gdbus.exe
+          Copy-Item .\Release\scarab.exe -Destination .\Release\bin\scarab.exe
+          Remove-Item .\Release\scarab.exe
+          Copy-Item .\OD_components_win\lib\OceanDirect.dll .\Release\bin\OceanDirect.dll
+      - name: upload-unsigned-artifact
+        id: upload-unsigned-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/Release
+          name: ScarabWin64

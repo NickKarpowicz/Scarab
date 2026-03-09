@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <complex>
 #include <memory>
-#include <fftw3_mkl.h>
+#include "ExternalLibraries/pocketfft_hdronly.h"
 #include "api/OceanDirectAPI.h"
-#include "Frontend/LightwaveExplorerGraphicalClasses.h"
+#include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
 
 void destroyMainWindowCallback();
 bool updateDisplay();
@@ -18,6 +18,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drop_down_change_callback();
 void handleGetOverlay0();
 void handleGetOverlay1();
 void handleGetOverlay2();
@@ -97,8 +98,11 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
 
 //Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
 //buffers for the data and overlays
-class spectrometer {
+class Spectrometer {
 public:
+    long deviceID;
+    int error;
+    int pixelCount;
     std::vector<double> readBuffer;
     std::vector<double> readBufferMinusDark;
     std::vector<double> wavelengthsBuffer;
@@ -114,11 +118,21 @@ public:
     std::vector<double> darkSpectrum;
     bool hasDarkSpectrum = false;
     int lastOverlay = -1;
-    int pixelCount = 0;
     bool isInitialized = false;
-    long deviceID = 0;
-    int error = 0;
     bool isLocked = false;
+    Spectrometer(long _deviceID, int _pixelCount) :
+        deviceID(_deviceID),
+        pixelCount(_pixelCount),
+        readBuffer(pixelCount),
+        readBufferMinusDark(pixelCount),
+        overlay0(pixelCount),
+        overlay0MinusDark(pixelCount),
+        overlay1(pixelCount),
+        overlay1MinusDark(pixelCount),
+        overlay2(pixelCount),
+        overlay2MinusDark(pixelCount),
+        darkSpectrum(pixelCount),
+        wavelengthsBuffer(pixelCount){}
     void subtractDark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
         if (!hasDarkSpectrum) {
             dataMinusDark = dataVector;
@@ -133,7 +147,7 @@ public:
     bool hasOverlay0 = false;
     bool hasOverlay1 = false;
     bool hasOverlay2 = false;
-    virtual ~spectrometer(){}
+    virtual ~Spectrometer(){}
     virtual void setIntegrationTime(unsigned long integrationTimeMicroseconds) = 0;
     virtual void acquireSingle() = 0;
     virtual std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) = 0;
@@ -219,8 +233,8 @@ public:
     }
 
     void appendBufferTo(std::vector<double>& outputBuffer) {
-        if (!hasDarkSpectrum) { 
-            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end()); 
+        if (!hasDarkSpectrum) {
+            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end());
         }
         else {
             outputBuffer.insert(outputBuffer.end(), readBufferMinusDark.begin(), readBufferMinusDark.end());
@@ -245,29 +259,13 @@ public:
 };
 
 
-class OceanSpectrometer : public spectrometer{
+class OceanSpectrometer : public Spectrometer{
 public:
-	OceanSpectrometer(long deviceIDinput) {
-		deviceID = deviceIDinput;
-		pixelCount = odapi_get_formatted_spectrum_length(deviceID, &error);
-        readBuffer = std::vector<double>(pixelCount);
-        readBufferMinusDark = std::vector<double>(pixelCount);
-        overlay0 = std::vector<double>(pixelCount);
-        overlay0MinusDark = std::vector<double>(pixelCount);
-        overlay1 = std::vector<double>(pixelCount);
-        overlay1MinusDark = std::vector<double>(pixelCount);
-        overlay2 = std::vector<double>(pixelCount);
-        overlay2MinusDark = std::vector<double>(pixelCount);
-        darkSpectrum = std::vector<double>(pixelCount);
-        wavelengthsBuffer = std::vector<double>(pixelCount);
-		
-        if (error != 0 ) {
-            isInitialized = false;
-		}
-		else {
-            isInitialized = true;
-            odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
-		}
+	OceanSpectrometer(long deviceIDinput) :
+	    Spectrometer(deviceIDinput, odapi_get_formatted_spectrum_length(deviceIDinput, &error))
+	{
+        isInitialized = (error==0);
+        if(isInitialized) odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
 	}
     virtual ~OceanSpectrometer() override {
         odapi_close_device(deviceID, &error);
@@ -278,7 +276,7 @@ public:
     }
 
     void acquireSingle() override {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount); 
+        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
         subtractDark(readBuffer, readBufferMinusDark);
     }
 
@@ -288,7 +286,7 @@ public:
         return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
     }
 
-    void acquireOverlay(int overlayIndex) override {        
+    void acquireOverlay(int overlayIndex) override {
         switch (overlayIndex) {
         case 0:
             odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
@@ -317,11 +315,11 @@ public:
     }
 };
 
-std::vector<std::unique_ptr<spectrometer>> spectrometerSet;
+std::vector<std::unique_ptr<Spectrometer>> spectrometerSet;
 
 //Batch acquisition class which holds the buffers for acquiring a series of shots, plus the methods
 //to acquire and save the data
-class batchAcquisition {
+class BatchAcquisition {
     std::vector<double> data;
     std::vector<double> wavelengths;
     bool hasData = false;
@@ -329,7 +327,7 @@ class batchAcquisition {
     size_t spectrumSize = 0;
     size_t acquisitionCount = 0;
 public:
-    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireBatch(const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         s.lock();
         spectrumSize = s.size();
@@ -388,9 +386,9 @@ public:
         return spectrumSize;
     }
 };
-batchAcquisition theBatch;
+BatchAcquisition theBatch;
 
-class spectralInterferometry {
+class SpectralInterferometry {
     std::vector<double> wavelengths;
     std::vector<double> frequencies;
     std::vector<double> wavelengthsOnFrequencyGrid;
@@ -420,8 +418,6 @@ class spectralInterferometry {
     std::vector<std::complex<double>> hilbertTimeBuffer2;
     std::vector<double> hilbertRealBuffer;
     std::vector<double> hilbertImagBuffer;
-    fftw_plan fftPlanD2Z;
-    fftw_plan fftPlanZ2D;
     bool hasData = false;
     bool isConfigured = false;
     bool useAveraging = true;
@@ -444,9 +440,9 @@ class spectralInterferometry {
     void setupFFT() {
         std::unique_ptr<double[]> setupWorkD(new double[Nfreq]);
         std::unique_ptr<std::complex<double>[]> setupWorkC(new std::complex<double>[Nfreq]);
-        const int fftw1[1] = { static_cast<int>(Nfreq) };
-        fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), FFTW_MEASURE);
-        fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), FFTW_MEASURE);
+        //const int fftw1[1] = { static_cast<int>(Nfreq) };
+        //fftPlanD2Z = fftw_plan_many_dft_r2c(1, fftw1, 1, setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), FFTW_MEASURE);
+        //fftPlanZ2D = fftw_plan_many_dft_c2r(1, fftw1, 1, (fftw_complex*)setupWorkC.get(), fftw1, 1, static_cast<int>(Nfreq / 2 + 1), setupWorkD.get(), fftw1, 1, static_cast<int>(Nfreq), FFTW_MEASURE);
         FFTsize = Nfreq;
         hilbertTimeBuffer = std::vector<std::complex<double>>(Nfreq/2 + 1);
         hilbertTimeBuffer2 = hilbertTimeBuffer;
@@ -459,11 +455,8 @@ class spectralInterferometry {
         fftReferenceAReal = timeFilter;
         fftReferenceBReal = timeFilter;
         fftDataReal = timeFilter;
-        
     }
     void destroyFFT() {
-        fftw_destroy_plan(fftPlanD2Z);
-        fftw_destroy_plan(fftPlanZ2D);
     }
 
     void filteredHilbert(std::vector<double>& inData,
@@ -476,18 +469,47 @@ class spectralInterferometry {
             destroyFFT();
             setupFFT();
         }
-        fftw_execute_dft_r2c(fftPlanD2Z, inData.data(), (fftw_complex*)hilbertTimeBuffer.data());
+
+        //fftw_execute_dft_r2c(fftPlanD2Z, inData.data(), (fftw_complex*)hilbertTimeBuffer.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{inData.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            inData.data(),
+            hilbertTimeBuffer.data(),
+            1.0);
+
         double dt = 1.0 / (Nfreq * dF);
         std::complex<double> ii(0.0, 1.0);
         for (int i = 0; i < (Nfreq / 2 + 1); i++) {
-            hilbertTimeBuffer[i] *= 
+            hilbertTimeBuffer[i] *=
                 std::exp(-std::pow(
-                    (static_cast<double>(i) * dt - filter0) / filterSigma, filterOrd) 
+                    (static_cast<double>(i) * dt - filter0) / filterSigma, filterOrd)
                     / sqrt(2.0));
             hilbertTimeBuffer2[i] = ii * hilbertTimeBuffer[i];
         }
-        fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer.data(), outDataReal.data());
-        fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)hilbertTimeBuffer2.data(), outDataImag.data());
+
+        pocketfft::c2r(
+            pocketfft::shape_t{outDataReal.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            hilbertTimeBuffer.data(),
+            outDataReal.data(),
+            1.0);
+
+        pocketfft::c2r(
+            pocketfft::shape_t{outDataReal.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            hilbertTimeBuffer2.data(),
+            outDataImag.data(),
+            1.0);
     }
 
     void updateWithNewPhase() {
@@ -502,7 +524,7 @@ class spectralInterferometry {
         }
         else {
             phaseCount = 0;
-            for (int i = 0; i < Nfreq; i++) { 
+            for (int i = 0; i < Nfreq; i++) {
                 spectralPhaseMean[i] = spectralPhase[i];
                 spectralPhaseM2[i] = 0.0;
             }
@@ -519,10 +541,10 @@ class spectralInterferometry {
     }
 
 public:
-    spectralInterferometry() {
+    SpectralInterferometry() {
         setupFFT();
     }
-    ~spectralInterferometry() {
+    ~SpectralInterferometry() {
         destroyFFT();
     }
     void setAveraging(bool newState) {
@@ -566,14 +588,14 @@ public:
         spectralPhaseM2 = spectralPhaseMean;
     }
 
-    void acquireNewPhase(spectrometer& s) {
+    void acquireNewPhase(Spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
         calculatePhase();
         updateWithNewPhase();
         calculateGroupDelay();
     }
 
-    void acquireNewInterferogram(spectrometer& s) {
+    void acquireNewInterferogram(Spectrometer& s) {
         interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
     }
     void calculatePhase() {
@@ -644,9 +666,36 @@ public:
         filterOrder = ord;
     }
     void generateTimePlot() {
-        fftw_execute_dft_r2c(fftPlanD2Z, interferenceDataInterpolated.data(), (fftw_complex*)hilbertTimeBuffer.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
-        fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceB.data());
+        //fftw_execute_dft_r2c(fftPlanD2Z, interferenceDataInterpolated.data(), (fftw_complex*)hilbertTimeBuffer.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{interferenceDataInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            interferenceDataInterpolated.data(),
+            hilbertTimeBuffer.data(),
+            1.0);
+        //fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceA.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{referenceDataAInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            referenceDataAInterpolated.data(),
+            fftReferenceA.data(),
+            1.0);
+        //fftw_execute_dft_r2c(fftPlanD2Z, referenceDataAInterpolated.data(), (fftw_complex*)fftReferenceB.data());
+        pocketfft::r2c(
+            pocketfft::shape_t{referenceDataBInterpolated.size()},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
+            pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
+            pocketfft::shape_t{0},
+            pocketfft::FORWARD,
+            referenceDataBInterpolated.data(),
+            fftReferenceB.data(),
+            1.0);
         double dt = 1.0e3 / (Nfreq * dF);
         double maxSignal = 0.0;
         for (int i = 0; i < (Nfreq / 2 + 1); i++) {
@@ -668,7 +717,7 @@ public:
     bool checkConfigurationStatus() {
         return isConfigured;
     }
-    void acquireReferenceA(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireReferenceA(BatchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
@@ -684,7 +733,7 @@ public:
         referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
     }
 
-    void acquireReferenceB(batchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, spectrometer& s) {
+    void acquireReferenceB(BatchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
         if (N == 0) return;
         batchControl.acquireBatch(N, integrationTime, secondsToWait, s);
         wavelengths = s.wavelengthsCopy();
@@ -725,10 +774,10 @@ public:
         }
     }
 };
-spectralInterferometry theInterferenceController;
+SpectralInterferometry theInterferenceController;
 
 //Main class for controlling the interface
-class mainGui {
+class MainGui {
     bool queueUpdate = false;
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
@@ -737,7 +786,7 @@ class mainGui {
     bool isRunningLive = false;
     bool noSpectrometers = false;
     int sliderTarget = 0;
-    
+
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[18];
@@ -832,12 +881,12 @@ public:
         buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
-        
+
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handleReferenceA);
         buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
         buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handleResetPhase);
         buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handleSavePhase);
-        
+
         //RGB active
         textBoxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
         textBoxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
@@ -867,7 +916,7 @@ public:
         textBoxes[14].init(parentHandle, textCol4, 8, textWidth, 1);
         textBoxes[13].overwritePrint(std::string("0"));
         textBoxes[14].overwritePrint(std::string("10"));
-   
+
 
         textBoxes[15].init(parentHandle, textCol3, 9, 2, 1);
         textBoxes[15].setMaxCharacters(6);
@@ -877,7 +926,7 @@ public:
         textBoxes[17].setMaxCharacters(6);
         textBoxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
         textBoxes[15].overwritePrint(std::string("2048"));
-        
+
         textBoxes[18].init(parentHandle, textCol3, 11, 2, 1);
         textBoxes[18].setMaxCharacters(6);
         textBoxes[19].init(parentHandle, textCol4, 11, 2, 1);
@@ -925,10 +974,18 @@ public:
         pulldowns[1].addElement("Interferometry: phase");
         pulldowns[1].addElement("Interferometry: Group delay");
         pulldowns[1].init(parentHandle, 0, 1, 8, 1);
+        g_signal_connect(pulldowns[1].elementHandle, "notify::selected", G_CALLBACK(drop_down_change_callback), NULL);
+        gtk_widget_set_visible(buttons[9].elementHandle, false);
+        gtk_widget_set_visible(buttons[10].elementHandle, false);
+        gtk_widget_set_visible(buttons[11].elementHandle, false);
+        gtk_widget_set_visible(buttons[12].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[18].label, false);
+        gtk_widget_set_visible(textBoxes[18].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[19].elementHandle, false);
+        gtk_widget_set_visible(textBoxes[20].elementHandle, false);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
-        
-        g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
+
         window.present();
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 12, 1);
@@ -950,8 +1007,8 @@ public:
         int error = 0;
         console.cPrint("RID count {}\n", retrievedIdCount);
 
-        spectrometerSet = std::vector<std::unique_ptr<spectrometer>>();
-        
+        spectrometerSet = std::vector<std::unique_ptr<Spectrometer>>();
+
 		for (int i = 0; i < deviceIdCount; i++) {
 			odapi_open_device(deviceIds[i], &error);
             if (error) {
@@ -993,7 +1050,7 @@ public:
 	}
 
 };
-mainGui theGui;
+MainGui theGui;
 
 void destroyMainWindowCallback() {
 }
@@ -1018,6 +1075,18 @@ void handleRefreshRequest() {
 
 void handleGetOverlay0() {
     (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireOverlay(0);
+}
+
+void drop_down_change_callback(){
+    bool visibility = theGui.pulldowns[1].getValue()>2;
+    gtk_widget_set_visible(theGui.buttons[9].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[10].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[11].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.buttons[12].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[18].label, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[18].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[19].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.textBoxes[20].elementHandle, visibility);
 }
 
 void handleGetOverlay1() {
@@ -1164,11 +1233,11 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     }
     if (theGui.noSpectrometersFound()) return;
     int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if (!(*spectrometerSet[activeSpectrometer]).initialized()) {
+    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n",(*spectrometerSet[0]).getErrorCode());
         return;
     }
-   
+
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1177,7 +1246,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     bool logPlot = false;
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
-        
+
     }
 
     bool forceX = false;
@@ -1199,12 +1268,12 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         svgPath.append("_Spectrum.svg");
         sPlot.SVGPath = svgPath;
     }
-    
-    if (theGui.runningLive() && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
+
+    if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
         (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         (*spectrometerSet[activeSpectrometer]).acquireSingle();
     }
-    
+
     LweColor mainColor(0.5, 0, 1, 1);
     if (0.0 != (theGui.textBoxes[1].valueDouble() + theGui.textBoxes[2].valueDouble() + theGui.textBoxes[3].valueDouble())) {
         mainColor = LweColor(theGui.textBoxes[1].valueDouble(), theGui.textBoxes[2].valueDouble(), theGui.textBoxes[3].valueDouble(), 1);
@@ -1266,7 +1335,7 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
         }
         if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(1);
         else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
-       
+
         if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
     }
     sPlot.plot(cr);
@@ -1276,7 +1345,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 
     if (theGui.noSpectrometersFound()) return;
     int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if (!(*spectrometerSet[activeSpectrometer]).initialized()) {
+    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
         theGui.console.cPrint("Not initialized - error {}\n", (*spectrometerSet[0]).getErrorCode());
         return;
     }
@@ -1330,7 +1399,7 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
         frequencies[i] = fMin + static_cast<double>(i) * dF;
     }
     std::vector<double> liveSpectrum;
-    if (theGui.runningLive() && !(*spectrometerSet[activeSpectrometer]).checkLock() && Nfreq > 0) {
+    if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock() && Nfreq > 0) {
         (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         liveSpectrum = (*spectrometerSet[activeSpectrometer]).acquireSingleFrequency(frequencies);
     }
@@ -1518,6 +1587,7 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
 }
 
 void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     if (!theInterferenceController.checkConfigurationStatus()) handleResetController();
     LwePlot sPlot;
@@ -1611,6 +1681,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
 }
 
 void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1704,6 +1775,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
 
 
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1789,6 +1861,7 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
 }
 
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (theGui.noSpectrometersFound()) return;
     handleResetController();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1883,7 +1956,7 @@ bool updateDisplay() {
 void savePathCallback() {
 #ifdef __APPLE__
     theGui.pathBuffer = pathFromAppleSaveDialog();
-#endif 
+#endif
     theGui.requestSavePathUpdate();
 }
 
@@ -1897,7 +1970,9 @@ static void activate(GtkApplication* app, gpointer user_data) {
 }
 
 int main(int argc, char** argv) {
-    GtkApplication* app = gtk_application_new("nickkarpowicz.scarab", (GApplicationFlags)0);
+    GtkApplication* app = gtk_application_new("io.github.NickKarpowicz.Scarab", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
-    return g_application_run(G_APPLICATION(app), argc, argv);
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
+    return status;
 }

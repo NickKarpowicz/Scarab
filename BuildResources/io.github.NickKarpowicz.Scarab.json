@@ -1,0 +1,73 @@
+{
+  "id": "io.github.NickKarpowicz.Scarab",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "49",
+  "sdk": "org.gnome.Sdk",
+  "command": "scarab",
+  "finish-args": [
+    "--share=ipc",
+    "--device=dri",
+    "--device=usb",
+    "--filesystem=home",
+    "--socket=wayland",
+    "--socket=fallback-x11"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/cmake",
+    "/lib/pkgconfig",
+    "/lib/*.la",
+    "/lib/*.a",
+    "/mkspecs",
+    "/share/aclocal",
+    "/share/info",
+    "/share/man",
+    "/opt"
+  ],
+  "modules": [
+    {
+      "name": "ocean",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/include /app/lib",
+        "tar --strip-components=1 -xzf OD_components.tar.gz -C /app"
+      ],
+      "sources": [
+        {
+          "type": "file",
+          "url": "nick_use_only",
+          "sha256": "b3c7aaf8cb38e8e682c3e3191547deb4c9675130f5f6fa2fee93066be6aa64f9",
+          "dest-filename": "OD_components.tar.gz"
+        }
+      ]
+    },
+    {
+      "name": "gcem",
+      "buildsystem": "cmake-ninja",
+      "config-opts": ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/kthohr/gcem",
+          "tag": "v1.18.0",
+          "commit": "012ae73c6d0a2cb09ffe86475f5c6fba3926e200"
+        }
+      ]
+    },
+    {
+      "name": "Scarab",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_CXX_FLAGS='-g -O3 -march=x86-64-v3'",
+        "-DFLATPAK=1"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/NickKarpowicz/scarab",
+          "branch": "master"
+        }
+      ]
+    }
+  ]
+}
