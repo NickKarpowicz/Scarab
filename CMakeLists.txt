@@ -46,7 +46,9 @@ link_directories(${GTK4_LIBRARY_DIRS})
 add_executable(scarab
     Scarab/Scarab.cpp)
 if(WIN32)
-    set_target_properties(scarab PROPERTIES WIN32_EXECUTABLE TRUE)
+    set_target_properties(scarab PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     target_link_libraries(scarab OceanDirect.lib)
 else()
     target_link_libraries(scarab oceandirect)
