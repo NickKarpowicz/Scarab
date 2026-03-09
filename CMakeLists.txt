@@ -48,7 +48,7 @@ add_executable(scarab
 if(WIN32)
     set_target_properties(scarab PROPERTIES
         WIN32_EXECUTABLE TRUE
-        LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
     target_link_libraries(scarab OceanDirect.lib)
 else()
     target_link_libraries(scarab oceandirect)
