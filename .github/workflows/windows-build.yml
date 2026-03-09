@@ -28,7 +28,7 @@ jobs:
         run: |
           cmake -E make_directory build
           cd build
-          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS="/O2 /arch:AVX /fp:fast /EHsc" -DWINDOWS_OD_URL="${env:WINDOWS_OD_URL}"
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS="/O2 /arch:AVX /fp:fast /EHsc" -DWINDOWS_OD_URL="$WINDOWS_OD_URL"
           cmake --build . --config Release
         shell: cmd
       - name: Clean up distribution folder
