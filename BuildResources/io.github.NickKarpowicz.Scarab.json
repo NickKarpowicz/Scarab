@@ -35,7 +35,7 @@
       "sources": [
         {
           "type": "file",
-          "url": "https://datashare.mpcdf.mpg.de/public.php/dav/files/rpxPyMEQrWqwKBW",
+          "url": "nick_use_only",
           "sha256": "b3c7aaf8cb38e8e682c3e3191547deb4c9675130f5f6fa2fee93066be6aa64f9",
           "dest-filename": "OD_components.tar.gz"
         }
@@ -65,7 +65,7 @@
         {
           "type": "git",
           "url": "https://github.com/NickKarpowicz/scarab",
-          "branch": "dev20261"
+          "branch": "master"
         }
       ]
     }

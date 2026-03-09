@@ -5,7 +5,7 @@
 
 <p style="text-align: center;"><img src="Documentation/screenshot.png"></p>
 
-This is a simple c++ application for controlling spectrometers from Ocean Insight (nee Ocean Optics).
+This is a simple c++ application for controlling spectrometers from Ocean Optics.
 
 GUI with GTK4, should work on Linux, Mac, and Windows, but only tested on Linux and Windows so far.
 
@@ -98,27 +98,25 @@ Beneath the plot, there are a few more buttons and controls. These are:
 
 
 # Build requirements
-if you want to build it yourself, you'll need [Ocean Direct](https://www.oceaninsight.com/products/software/drivers/oceandirect/) from Ocean Insight. Additionally, it depends on the [GTK4](https://www.gtk.org) GUI library, [Intel OneApi](https://www.oneapi.io) for FFTs, and my [Lightwave Explorer code](https://github.com/NickKarpowicz/LightwaveExplorer).
+if you want to build it yourself, you'll need [Ocean Direct](https://www.oceaninsight.com/products/software/drivers/oceandirect/) from Ocean Insight. Additionally, it depends on the [GTK4](https://www.gtk.org) GUI library. This should be available on any Linux system. The Windows build will obtain it automatically.
 
 # Linux build instructions
-First, you'll have to install Ocean Direct. Currently it is assumed to be installed in the default location (/usr/local/OceanOptics). 
+First, you'll have to install Ocean Direct. It is assumed to be installed in the default location (/usr/local/OceanOptics). 
 
 You'll have to install the packages needed for the build process, including gcc, GTK, fmt, and ninja. On Fedora it can be done with:
 ```
-sudo dnf install gtk4-devel fmt-devel ninja-build git g++
+sudo dnf install gtk4-devel git g++
 ```
-You will also have to install the OneAPI base toolkit following the directions [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html).
 
-Then you can close and compile this repo with
+
+Then you can clone and compile this repo with
 
 ```
 git clone --depth=1 https://github.com/NickKarpowicz/Scarab
 cd Scarab
-mkdir build
-cd build
-. /opt/intel/oneapi/setvars.sh
-cmake .. -G Ninja
-ninja
+mkdir build && cd build
+cmake ..
+cmake --build .
 ```
 
 This will a 'scarab' binary in the build directory. You can install it with 
