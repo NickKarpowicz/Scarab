@@ -945,7 +945,7 @@ public:
         buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, savePathCallback, 0);
         textBoxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
         textBoxes[49].init(window.parentHandle(4), 5, 0, 2, 1);
-        textBoxes[50].init(window.parentHandle(4), 7, 0, 2, 1);
+        textBoxes[50].init(window.parentHandle(4), 9, 0, 2, 1);
         textBoxes[51].init(window.parentHandle(4), 11, 0, 2, 1);
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawSpectrum);
@@ -954,7 +954,7 @@ public:
         buttons[13].init(("xlim"), window.parentHandle(4), 2, 0, 1, 1, handleRefreshRequest);
         buttons[13].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[13].squeeze();
-        buttons[14].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, handleRefreshRequest);
+        buttons[14].init(("ylim"), window.parentHandle(4), 7, 0, 1, 1, handleRefreshRequest);
         buttons[14].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[14].squeeze();
         buttons[15].init(("SVG"), window.parentHandle(4), 1, 0, 1, 1, svgCallback);
