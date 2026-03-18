@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Scarab
+Exec=scarab
+Type=Application
+Categories=Science
+GenericName[en_US]=Spectrometer control and recording for attosecond beamlines
+GenericName=Spectrometer control and recording for attosecond beamlines
