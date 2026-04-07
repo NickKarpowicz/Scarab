@@ -42,7 +42,7 @@ double modSquared(const std::complex<double>& x){
     return x.real() * x.real() + x.imag() * x.imag();
 }
 
-std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
+std::vector<double> wavelengthToFrequency(const std::vector<double>& frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
 {
     double dF = frequencies[1] - frequencies[0];
     std::vector<double> spectrumOut(frequencies.size());
@@ -54,7 +54,8 @@ std::vector<double> wavelengthToFrequency(std::vector<double> frequencies, const
             return 0.0;
         }
         // Find the index i such that wavelengths[i] <= targetWavelength <= wavelengths[i+1]
-        size_t i = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), targetWavelength)) - 1;
+        size_t i = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), targetWavelength));
+        if (i<1) return 0.0;
         return (1e-6*targetWavelength*targetWavelength)*(spectrumIn[i - 1] + (spectrumIn[i] - spectrumIn[i - 1]) / (wavelengths[i] - wavelengths[i - 1]) * (targetWavelength - wavelengths[i - 1]));
     };
 
