@@ -283,7 +283,7 @@ public:
     std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) override {
         odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
         subtractDark(readBuffer, readBufferMinusDark);
-        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBuffer);
+        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBufferMinusDark);
     }
 
     void acquireOverlay(int overlayIndex) override {
