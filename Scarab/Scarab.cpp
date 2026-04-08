@@ -497,7 +497,7 @@ class SpectralInterferometry {
             pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
             pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
             pocketfft::shape_t{0},
-            pocketfft::FORWARD,
+            pocketfft::BACKWARD,
             hilbertTimeBuffer.data(),
             outDataReal.data(),
             1.0);
@@ -507,7 +507,7 @@ class SpectralInterferometry {
             pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>))},
             pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double))},
             pocketfft::shape_t{0},
-            pocketfft::FORWARD,
+            pocketfft::BACKWARD,
             hilbertTimeBuffer2.data(),
             outDataImag.data(),
             1.0);
@@ -771,6 +771,12 @@ public:
             fs << spectralPhaseMean[j];
             fs << " ";
             fs << std::sqrt(spectralPhaseM2[j] / (phaseCount - 1));
+            fs << " ";
+            fs << referenceDataAInterpolated[j];
+            fs << " ";
+            fs << referenceDataBInterpolated[j];
+            fs << " ";
+            fs << interferenceDataInterpolated[j];
             fs << '\x0A';
         }
     }
@@ -1256,11 +1262,17 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
-    bool forceY = false;
+    bool forceYmin = false;
+    bool forceYmax = false;
     double yMin = theGui.textBoxes[50].valueDouble();
     double yMax = theGui.textBoxes[51].valueDouble();
     if (yMin != yMax && yMax > yMin) {
-        forceY = true;
+        forceYmin = true;
+        forceYmax = yMax != 0.0;
+    }
+    if(logPlot && !forceYmin){
+        forceYmin = true;
+        yMin = 1e-1;
     }
 
     if (saveSVG) {
@@ -1302,10 +1314,10 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     sPlot.data = (*spectrometerSet[activeSpectrometer]).data();
     sPlot.Npts = (*spectrometerSet[activeSpectrometer]).size();
     sPlot.logScale = logPlot;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.forceYmin = forceYmin;
+    sPlot.forceYmax = forceYmax;
+    if (forceYmax)sPlot.forcedYmax = yMax;
+    if (forceYmin)sPlot.forcedYmin = yMin;
     sPlot.color = mainColor;
     sPlot.color2 = overLay0Color;
     sPlot.color3 = overLay1Color;
@@ -1368,11 +1380,17 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
-    bool forceY = false;
+    bool forceYmin = false;
+    bool forceYmax = false;
     double yMin = theGui.textBoxes[50].valueDouble();
     double yMax = theGui.textBoxes[51].valueDouble();
     if (yMin != yMax && yMax > yMin) {
-        forceY = true;
+        forceYmin = true;
+        forceYmax = yMax != 0.0;
+    }
+    if(logPlot && !forceYmin){
+        forceYmin = true;
+        yMin = 1e-1;
     }
 
     if (saveSVG) {
@@ -1433,10 +1451,10 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     sPlot.data = liveSpectrum.data();
     sPlot.Npts = Nfreq;
     sPlot.logScale = logPlot;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.forceYmin = forceYmin;
+    sPlot.forceYmax = forceYmax;
+    if (forceYmax)sPlot.forcedYmax = yMax;
+    if (forceYmin)sPlot.forcedYmin = yMin;
     sPlot.color = mainColor;
     sPlot.color2 = overLay0Color;
     sPlot.color3 = overLay1Color;
@@ -1492,13 +1510,18 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
-    bool forceY = false;
+    bool forceYmin = false;
+    bool forceYmax = false;
     double yMin = theGui.textBoxes[50].valueDouble();
     double yMax = theGui.textBoxes[51].valueDouble();
     if (yMin != yMax && yMax > yMin) {
-        forceY = true;
+        forceYmin = true;
+        forceYmax = yMax != 0.0;
     }
-
+    if(logPlot && !forceYmin){
+        forceYmin = true;
+        yMin = 1e-1;
+    }
     if (saveSVG) {
         std::string svgPath;
         theGui.filePaths[0].copyBuffer(svgPath);
@@ -1564,10 +1587,10 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     sPlot.data = liveSpectra[0].data();
     sPlot.Npts = Nfreq;
     sPlot.logScale = logPlot;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.forceYmin = forceYmin;
+    sPlot.forceYmax = forceYmax;
+    if (forceYmax)sPlot.forcedYmax = yMax;
+    if (forceYmin)sPlot.forcedYmin = yMin;
     sPlot.color = mainColor;
     sPlot.color2 = overLay0Color;
     sPlot.color3 = overLay1Color;
