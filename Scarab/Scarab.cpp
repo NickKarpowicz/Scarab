@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <complex>
 #include <memory>
+#include <span>
 #include "ExternalLibraries/pocketfft_hdronly.h"
 #include "api/OceanDirectAPI.h"
 #include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
