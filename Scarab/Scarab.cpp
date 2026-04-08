@@ -42,6 +42,53 @@ double modSquared(const std::complex<double>& x){
     return x.real() * x.real() + x.imag() * x.imag();
 }
 
+std::vector<double> fornberg_stencil(const size_t order, const std::span<const double>& positions, const double position_out){
+    size_t n_pos = positions.size();
+    size_t cols = order + 1;
+    std::vector<double> delta_current(n_pos * cols);
+    std::vector<double> delta_previous(n_pos * cols);
+    delta_current[0] = 1.0;
+    double c1 = 1.0;
+    for (size_t n=1; n<n_pos; n++) {
+        delta_previous.swap(delta_current);
+        double c2 = 1.0;
+        size_t zero_previous = n <= order;
+        size_t min_n_order = std::min(n, order);
+        for( size_t v = 0; v<n; v++) {
+            double c3 = positions[n] - positions[v];
+            c2 *= c3;
+
+            if (zero_previous) {
+                delta_previous[n * n_pos + v] = 0.0;
+            }
+
+            for (size_t m = 0; m<=min_n_order; m++) {
+                double last_element = m == 0 ?
+                    0.0 :
+                    static_cast<double>(m) * delta_previous[(m - 1) * n_pos + v];
+
+                delta_current[m * n_pos + v] = ((positions[n] - position_out)
+                    * delta_previous[m * n_pos + v]
+                    - last_element)
+                    / c3;
+            }
+        }
+
+        for (size_t m = 0; m<=min_n_order; m++) {
+            double first_element = m == 0 ?
+                0.0 :
+                static_cast<double>(m) * delta_previous[(m - 1) * n_pos + n - 1];
+
+            delta_current[m * n_pos + n] = (c1 / c2)
+                * (first_element
+                    - (positions[n - 1] - position_out) * delta_previous[m * n_pos + n - 1]);
+        }
+
+        c1 = c2;
+    }
+    return std::vector<double>(delta_current.begin() + order*n_pos, delta_current.begin() + cols*n_pos);
+}
+
 std::vector<double> wavelengthToFrequency(const std::vector<double>& frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
 {
     double dF = frequencies[1] - frequencies[0];
@@ -85,12 +132,37 @@ std::vector<double> wavelengthToFrequency(const std::vector<double>& frequencies
         }
 
         return (0.5e-6 * targetWavelength * targetWavelength) * totalArea / (highEdge - lowEdge);
+    };
 
+    auto interpolate_fornberg = [&](const double target_frequency){
+        const size_t stencil_width = 3;
+        const size_t stencil_offset = stencil_width/2u;
+        const double target_wavelength = constProd(lightC<double>(), 1e-3) / target_frequency;
+        size_t stencil_x_start = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), target_wavelength));
+        if(stencil_x_start < stencil_offset) {
+            stencil_x_start = 0;
+        }
+        else if(stencil_x_start >= wavelengths.size() - stencil_width){
+            stencil_x_start = wavelengths.size() - stencil_width;
+        }
+        else{
+            if(abs(wavelengths[stencil_x_start] - target_wavelength) > abs(wavelengths[stencil_x_start + 1] - target_wavelength)){
+                stencil_x_start++;
+            }
+        }
+        std::span<const double> stencil_wavelengths = std::span(wavelengths).subspan(stencil_x_start, stencil_width);
+        auto stencil = fornberg_stencil(0, stencil_wavelengths, target_wavelength);
+        double interpolated_value = 0.0;
+        for(size_t i = 0; i < stencil_width; i++){
+            interpolated_value += stencil[i] * spectrumIn[stencil_x_start + i];
+        }
+        return target_wavelength * target_wavelength * 1e-6 * interpolated_value;
     };
 
 #pragma omp parallel for
     for (int j = 0; j < frequencies.size(); j++) {
-        spectrumOut[j] = interpolateBin(frequencies[j]);
+        //spectrumOut[j] = interpolateBin(frequencies[j]);
+        spectrumOut[j] = interpolate_fornberg(frequencies[j]);
     }
 
     return spectrumOut;
