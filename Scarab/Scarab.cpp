@@ -4,7 +4,6 @@
 #include "ocean_spectrometer.hpp"
 #include "batch_acquisition.hpp"
 #include "interferometry.hpp"
-#include <iostream>
 bool update_display();
 void handle_run_button();
 void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -46,7 +45,7 @@ class MainGui {
     bool is_running_live = false;
 public:
     LweTextBox text_boxes[54];
-    LweButton buttons[18];
+    LweButton buttons[19];
     LweConsole console;
     LweConsole sequence;
     LweTextBox file_paths[4];
@@ -120,7 +119,7 @@ public:
         buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handle_get_overlay0);
         buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handle_get_overlay1);
         buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handle_get_overlay2);
-        buttons[3].init(("Acquire"), parentHandle, buttonCol1, 7, buttonWidth, 1, handle_save);
+        buttons[18].init(("Acquire"), parentHandle, buttonCol1, 7, buttonWidth, 1, handle_save);
 
         buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handle_delete_overlay0);
         buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handle_delete_overlay1);
@@ -188,7 +187,7 @@ public:
         file_paths[0].setMaxCharacters(pathChars);
         file_paths[0].overwritePrint(std::format("DefaultOutput.txt"));
         checkboxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
-        buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, save_path_callback, 0);
+        buttons[17].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, save_path_callback, 0);
         text_boxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
         text_boxes[49].init(window.parentHandle(4), 5, 0, 2, 1);
         text_boxes[50].init(window.parentHandle(4), 9, 0, 2, 1);
@@ -199,16 +198,12 @@ public:
         checkboxes[3].init(("Average phase"), window.parentHandle(4), 15, 0, 1, 1);
         buttons[13].init(("xlim"), window.parentHandle(4), 2, 0, 1, 1, handle_refresh_request);
         buttons[13].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
-        buttons[13].squeeze();
         buttons[14].init(("ylim"), window.parentHandle(4), 7, 0, 1, 1, handle_refresh_request);
         buttons[14].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
-        buttons[14].squeeze();
         buttons[15].init(("SVG"), window.parentHandle(4), 1, 0, 1, 1, svg_callback);
         buttons[15].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
-        buttons[15].squeeze();
         buttons[16].init("\xe2\x86\x94\xef\xb8\x8f", window.parentHandle(4), 0, 0, 1, 1, handle_collapse_panel);
         buttons[16].setTooltip("Collapse/expand the data entry panel");
-
         for (int i = 0; i < 18; i++) {
             text_boxes[i].setMaxCharacters(6);
         }
@@ -232,9 +227,23 @@ public:
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
 
-        window.present();
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 12, 1);
+
+        for(auto& box : text_boxes){
+            box.vertical_thick();
+        }
+        for(auto& button : buttons){
+            button.vertical_thick();
+        }
+        for(auto& p : file_paths){
+            p.vertical_thick();
+        }
+        for(auto& p : pulldowns){
+            p.vertical_thick();
+        }
+        window.present();
+
         draw_boxes[0].queueDraw();
         timeoutID = g_timeout_add(20, G_SOURCE_FUNC(update_display), NULL);
     }

@@ -68,6 +68,10 @@ public:
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
     }
+    void vertical_thick(){
+        std::unique_lock GTKlock(GTKmutex);
+        gtk_widget_set_valign(elementHandle, GTK_ALIGN_FILL);
+    }
     void setTooltip(const char* tooltipText) {
         std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_tooltip_text(elementHandle, tooltipText);
