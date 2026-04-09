@@ -23,7 +23,7 @@ public:
     std::vector<double> overlay1F;
     std::vector<double> overlay2F;
     std::vector<double> dark_spectrum;
-    bool hasdark_spectrum = false;
+    bool has_dark_spectrum = false;
     int last_overlay = -1;
     bool is_initialized = false;
     bool is_locked = false;
@@ -40,7 +40,7 @@ public:
         dark_spectrum(pixel_count),
         wavelengths_buffer(pixel_count){}
     void subtract_dark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
-        if (!hasdark_spectrum) {
+        if (!has_dark_spectrum) {
             dataMinusDark = dataVector;
             return;
         }
@@ -73,7 +73,7 @@ public:
         return is_locked;
     }
     void disabledark_spectrum() {
-        hasdark_spectrum = false;
+        has_dark_spectrum = false;
     }
     int get_overlay_count() {
         int overlayCount = 0;
@@ -85,13 +85,13 @@ public:
     double* get_overlay(int overlayIndex) {
         switch (overlayIndex) {
         case 0:
-            if(hasdark_spectrum) return overlay0_minus_dark.data();
+            if(has_dark_spectrum) return overlay0_minus_dark.data();
             return overlay0.data();
         case 1:
-            if (hasdark_spectrum) return overlay1_minus_dark.data();
+            if (has_dark_spectrum) return overlay1_minus_dark.data();
             return overlay1.data();
         case 2:
-            if (hasdark_spectrum) return overlay2_minus_dark.data();
+            if (has_dark_spectrum) return overlay2_minus_dark.data();
             return overlay2.data();
         default:
             return nullptr;
@@ -101,15 +101,15 @@ public:
     double* get_overlay_frequency(int overlayIndex, const std::vector<double> frequencies) {
         switch (overlayIndex) {
         case 0:
-            if (hasdark_spectrum) overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0_minus_dark);
+            if (has_dark_spectrum) overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0_minus_dark);
             else overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0);
             return overlay0F.data();
         case 1:
-            if (hasdark_spectrum) overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1_minus_dark);
+            if (has_dark_spectrum) overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1_minus_dark);
             overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1);
             return overlay1F.data();
         case 2:
-            if (hasdark_spectrum) overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2_minus_dark);
+            if (has_dark_spectrum) overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2_minus_dark);
             overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2);
             return overlay2F.data();
         default:
@@ -132,14 +132,14 @@ public:
     }
 
     double* data() {
-        if (hasdark_spectrum) { return read_buffer_minus_dark.data(); }
+        if (has_dark_spectrum) { return read_buffer_minus_dark.data(); }
         else {
             return read_buffer.data();
         }
     }
 
     void append_buffer_to(std::vector<double>& outputBuffer) {
-        if (!hasdark_spectrum) {
+        if (!has_dark_spectrum) {
             outputBuffer.insert(outputBuffer.end(), read_buffer.begin(), read_buffer.end());
         }
         else {

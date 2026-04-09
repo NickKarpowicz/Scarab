@@ -3,16 +3,33 @@
 #include <string>
 #include "spectrometer.hpp"
 #include "api/OceanDirectAPI.h"
+
+//wrapper for the open_device function to call when initializing the base Spectrometer class
+[[nodiscard]] inline long open_ocean_spectrometer_wrapper(long device_id, int* error){
+    odapi_open_device(device_id, error);
+    return device_id;
+}
+
 class OceanSpectrometer : public Spectrometer{
-    long device_id;
-    int error;
 public:
+    long device_id;
+    int error=0;
 	OceanSpectrometer(long device_id_input) :
 	    device_id(device_id_input),
-	    Spectrometer(odapi_get_formatted_spectrum_length(device_id_input, &error))
+	    Spectrometer(odapi_get_formatted_spectrum_length(open_ocean_spectrometer_wrapper(device_id_input, &error), &error))
 	{
         is_initialized = (error==0);
         if(is_initialized) odapi_get_wavelengths(device_id, &error, wavelengths_buffer.data(), pixel_count);
+        // Get the device name
+        const int name_length = 128;
+        char device_name[name_length] = { 0 };
+        odapi_get_device_name(device_id, &error, device_name, name_length);
+        name = std::string(device_name);
+        // and serial number
+        int serial_number_length = odapi_get_serial_number_maximum_length(device_id, &error);
+        std::unique_ptr<char> serialNumber(new char[serial_number_length + 1] {});
+        odapi_get_serial_number(device_id, &error, serialNumber.get(), serial_number_length);
+        serial_number = std::string(serialNumber.get());
 	}
     virtual ~OceanSpectrometer() override {
         odapi_close_device(device_id, &error);
@@ -58,7 +75,7 @@ public:
     void acquire_dark_spectrum() override {
         dark_spectrum = std::vector<double>(pixel_count);
         odapi_get_formatted_spectrum(device_id, &error, dark_spectrum.data(), pixel_count);
-        hasdark_spectrum = true;
+        has_dark_spectrum = true;
     }
 };
 
@@ -72,38 +89,14 @@ inline std::string open_ocean_spectrometers(std::vector<std::unique_ptr<Spectrom
     int device_id_count = odapi_get_number_of_device_ids();
 
     std::vector<long> device_ids(device_id_count);
-    int retrievedIdCount = odapi_get_device_ids(device_ids.data(), device_id_count);
+    int retrieved_id_count = odapi_get_device_ids(device_ids.data(), device_id_count);
     int error = 0;
-    output += std::format("RID count {}\n", retrievedIdCount);
+    output += std::format("Ocean Optics spectrometer count {}\n", retrieved_id_count);
     for (int i = 0; i < device_id_count; i++) {
-    odapi_open_device(device_ids[i], &error);
-                if (error) {
-                    output+=std::format("Couldn't open the device! Error code{}\n", error);
-                    return output;
-                }
-    // Get the device name
-    const int name_length = 128;
-    char device_name[name_length] = { 0 };
-    odapi_get_device_name(device_ids[i], &error, device_name, name_length);
-    if (error != 0) {
-    output+=std::format("Failed to retrieve the spectrometer type. The error code is:  {}\n", error);
-                    return output;
-    }
-    // and serial number
-    int serial_number_length = odapi_get_serial_number_maximum_length(device_ids[i], &error);
-                if (error != 0) {
-                    output+=std::format("Failed to retrieve the serial number length. The error code is:  {}\n", error);
-                    return output;
-                }
-                std::unique_ptr<char> serialNumber(new char[serial_number_length + 1] {});
-    odapi_get_serial_number(device_ids[i], &error, serialNumber.get(), serial_number_length);
-    if (error != 0) {
-    output += std::format("Failed to retrieve the spectrometer serial number. The error code is:  {}\n", error);
-                    return output;
-    }
             spectrometer_set.push_back(std::make_unique<OceanSpectrometer>(device_ids[i]));
-            spectrometer_set.back()->name=std::string(device_name);
-            spectrometer_set.back()->serial_number=std::string(serialNumber.get());
+            if(((OceanSpectrometer*)spectrometer_set.back().get())->error){
+                output+=std::format("Opening spectrometer {} failed with error {}\n",i,((OceanSpectrometer*)spectrometer_set.back().get())->error);
+            }
     }
     return output;
 };
