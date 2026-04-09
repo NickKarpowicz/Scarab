@@ -1,6 +1,4 @@
 #include <thread>
-
-#include "api/OceanDirectAPI.h"
 #include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
 #include "spectrometer.hpp"
 #include "ocean_spectrometer.hpp"
@@ -36,7 +34,7 @@ void handle_reset_phase();
 void handle_save_phase();
 void svg_callback();
 
-std::vector<std::unique_ptr<Spectrometer>> spectrometerSet;
+std::vector<std::unique_ptr<Spectrometer>> spectrometer_set;
 BatchAcquisition theBatch;
 SpectralInterferometry the_interference_controller;
 
@@ -188,7 +186,7 @@ public:
 
         file_paths[0].init(parentHandle, 0, 6, 10, 1);
         file_paths[0].setMaxCharacters(pathChars);
-        file_paths[0].overwritePrint(Sformat("DefaultOutput.txt"));
+        file_paths[0].overwritePrint(std::format("DefaultOutput.txt"));
         checkboxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
         buttons[7].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, save_path_callback, 0);
         text_boxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
@@ -242,54 +240,14 @@ public:
     }
 
     void initializeSpectrometers() {
-        int deviceCount = odapi_probe_devices();
-        if (deviceCount == 0) {
-            console.cPrint("I didn't find any spectrometers...\nMake sure you've installed the driver.\n");
-            return;
+        spectrometer_set = std::vector<std::unique_ptr<Spectrometer>>();
+        auto ocean_string = open_ocean_spectrometers(spectrometer_set);
+        console.cPrint("{}", ocean_string);
+        for(int i = 0; i < spectrometer_set.size(); i++){
+            console.cPrint("Device {}: {}\n    serial number: {}\n", i, spectrometer_set[i]->name, spectrometer_set[i]->serial_number);
+            std::string new_element = std::format("{}: {}, serial: {}", i, spectrometer_set[i]->name, spectrometer_set[i]->serial_number);
+            pulldowns[0].addElement(new_element.c_str());
         }
-        int device_idCount = odapi_get_number_of_device_ids();
-
-        std::vector<long> device_ids(device_idCount);
-        int retrievedIdCount = odapi_get_device_ids(device_ids.data(), device_idCount);
-        int error = 0;
-        console.cPrint("RID count {}\n", retrievedIdCount);
-
-        spectrometerSet = std::vector<std::unique_ptr<Spectrometer>>();
-
-		for (int i = 0; i < device_idCount; i++) {
-			odapi_open_device(device_ids[i], &error);
-            if (error) {
-                console.cPrint("Couldn't open the device! Error code{}\n", error);
-                return;
-            }
-			// Get the device name
-			const int nameLength = 128;
-			char deviceName[nameLength] = { 0 };
-			odapi_get_device_name(device_ids[i], &error, deviceName, nameLength);
-			if (error != 0) {
-				console.cPrint("Failed to retrieve the spectrometer type. The error code is:  {}\n", error);
-                return;
-			}
-			// and serial number
-			int serialNumberLength = odapi_get_serial_number_maximum_length(device_ids[i], &error);
-            if (error != 0) {
-                console.cPrint("Failed to retrieve the serial number length. The error code is:  {}\n", error);
-                return;
-            }
-            std::unique_ptr<char> serialNumber(new char[serialNumberLength + 1] {});
-			odapi_get_serial_number(device_ids[i], &error, serialNumber.get(), serialNumberLength);
-			if (error != 0) {
-				console.cPrint("Failed to retrieve the spectrometer serial number. The error code is:  {}\n", error);
-                return;
-			}
-			else {
-				console.cPrint("Device {}: {}\n    serial number: {}\n", i, deviceName, serialNumber.get());
-                //console.cPrint("Device {}: {}\n    serial number: {}\n", i, deviceName, 0);
-                std::string newElement = Sformat("{}: {}", i, deviceName);
-                pulldowns[0].addElement(newElement.c_str());
-			}
-            spectrometerSet.push_back(std::make_unique<OceanSpectrometer>(device_ids[i]));
-		}
 	}
 
 };
@@ -316,7 +274,7 @@ void handle_refresh_request() {
 }
 
 void handle_get_overlay0() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(0);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(0);
 }
 
 void drop_down_change_callback(){
@@ -332,11 +290,11 @@ void drop_down_change_callback(){
 }
 
 void handle_get_overlay1() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(1);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(1);
 }
 
 void handle_get_overlay2() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(2);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(2);
 }
 
 void handle_collapse_panel() {
@@ -344,42 +302,42 @@ void handle_collapse_panel() {
 }
 
 void handle_delete_overlay0() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).delete_overlay(0);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(0);
 }
 
 void handle_delete_overlay1() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).delete_overlay(1);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(1);
 }
 
 void handle_delete_overlay2() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).delete_overlay(2);
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(2);
 }
 
 void handle_get_dark_spectrum() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_dark_spectrum();
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_dark_spectrum();
 }
 
 void handle_delete_dark_spectrum() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).disabledark_spectrum();
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).disabledark_spectrum();
 }
 
-void acquisitionThread(int activeSpectrometer, size_t N, double integration_time, double seconds_to_wait, std::string path, bool timestamp) {
-    theBatch.acquire_batch(N, integration_time, seconds_to_wait, (*spectrometerSet[activeSpectrometer]));
+void acquisition_thread(int active_spectrometer, size_t N, double integration_time, double seconds_to_wait, std::string path, bool timestamp) {
+    theBatch.acquire_batch(N, integration_time, seconds_to_wait, (*spectrometer_set[active_spectrometer]));
     theBatch.save(path, timestamp);
     theGui.console.tPrint("Finished writing {}!\n", path);
 }
 
 void handle_save() {
     theGui.stop_live();
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if ((*spectrometerSet[activeSpectrometer]).checkLock()) return;
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if ((*spectrometer_set[active_spectrometer]).checkLock()) return;
     std::string path;
     theGui.file_paths[0].copyBuffer(path);
     bool timestamp = theGui.checkboxes[2].isChecked();
     size_t N = (size_t)theGui.text_boxes[14].valueDouble();
     double integration_time = theGui.text_boxes[0].valueDouble();
     double waitTime = theGui.text_boxes[13].valueDouble();
-    std::thread(acquisitionThread, activeSpectrometer, N, integration_time, waitTime, path, timestamp).detach();
+    std::thread(acquisition_thread, active_spectrometer, N, integration_time, waitTime, path, timestamp).detach();
 }
 
 void handle_save_phase() {
@@ -389,12 +347,12 @@ void handle_save_phase() {
     the_interference_controller.save(path, timestamp);
 }
 
-void referenceAAcquisitionThread(int activeSpectrometer, size_t N, double integration_time, double seconds_to_wait) {
-    the_interference_controller.acquire_reference_A(theBatch, N, integration_time, seconds_to_wait, (*spectrometerSet[activeSpectrometer]));
+void reference_A_acquisition_thread(int active_spectrometer, size_t N, double integration_time, double seconds_to_wait) {
+    the_interference_controller.acquire_reference_A(theBatch, N, integration_time, seconds_to_wait, (*spectrometer_set[active_spectrometer]));
 }
 
-void referenceBAcquisitionThread(int activeSpectrometer, size_t N, double integration_time, double seconds_to_wait) {
-    the_interference_controller.acquireReferenceB(theBatch, N, integration_time, seconds_to_wait, (*spectrometerSet[activeSpectrometer]));
+void reference_B_acquisition_thread(int active_spectrometer, size_t N, double integration_time, double seconds_to_wait) {
+    the_interference_controller.acquireReferenceB(theBatch, N, integration_time, seconds_to_wait, (*spectrometer_set[active_spectrometer]));
 }
 
 void handle_reference_A() {
@@ -404,12 +362,12 @@ void handle_reference_A() {
         return;
     }
     theGui.stop_live();
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if ((*spectrometerSet[activeSpectrometer]).checkLock()) return;
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if ((*spectrometer_set[active_spectrometer]).checkLock()) return;
     size_t N = (size_t)theGui.text_boxes[14].valueDouble();
     double integration_time = theGui.text_boxes[0].valueDouble();
     double waitTime = theGui.text_boxes[13].valueDouble();
-    std::thread(referenceAAcquisitionThread, activeSpectrometer, N, integration_time, waitTime).detach();
+    std::thread(reference_A_acquisition_thread, active_spectrometer, N, integration_time, waitTime).detach();
 }
 
 void handle_reference_B() {
@@ -419,12 +377,12 @@ void handle_reference_B() {
         return;
     }
     theGui.stop_live();
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if ((*spectrometerSet[activeSpectrometer]).checkLock()) return;
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if ((*spectrometer_set[active_spectrometer]).checkLock()) return;
     size_t N = (size_t)theGui.text_boxes[14].valueDouble();
     double integration_time = theGui.text_boxes[0].valueDouble();
     double waitTime = theGui.text_boxes[13].valueDouble();
-    std::thread(referenceBAcquisitionThread, activeSpectrometer, N, integration_time, waitTime).detach();
+    std::thread(reference_B_acquisition_thread, active_spectrometer, N, integration_time, waitTime).detach();
 }
 
 void handle_reset_controller() {
@@ -432,13 +390,13 @@ void handle_reset_controller() {
     if (num_freqs < 2) return;
     double fMin = theGui.text_boxes[16].valueDouble();
     double fMax = theGui.text_boxes[17].valueDouble();
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].getValue();
     if (fMax == 0.0) {
-        fMax = (*spectrometerSet[activeSpectrometer]).wavelengths()[0];
+        fMax = (*spectrometer_set[active_spectrometer]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
     }
     if (fMin == 0.0) {
-        fMin = (*spectrometerSet[activeSpectrometer]).wavelengths()[(*spectrometerSet[activeSpectrometer]).size() - 1];
+        fMin = (*spectrometer_set[active_spectrometer]).wavelengths()[(*spectrometer_set[active_spectrometer]).size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
     }
     the_interference_controller.reset_frequencies(num_freqs, fMin, fMax);
@@ -474,9 +432,9 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
         return;
     }
 
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
-        theGui.console.cPrint("Not initialized - error {}\n",(*spectrometerSet[0]).get_error_code());
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
+        theGui.console.cPrint("Not initialized - error {}\n",(*spectrometer_set[0]).get_error_code());
         return;
     }
 
@@ -517,9 +475,9 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
         sPlot.SVGPath = svgPath;
     }
 
-    if (theGui.running_live() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
-        (*spectrometerSet[activeSpectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        (*spectrometerSet[activeSpectrometer]).acquire_single();
+    if (theGui.running_live() && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).checkLock()) {
+        (*spectrometer_set[active_spectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+        (*spectrometer_set[active_spectrometer]).acquire_single();
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
@@ -544,10 +502,10 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dataX = (*spectrometerSet[activeSpectrometer]).wavelengths();
+    sPlot.dataX = (*spectrometer_set[active_spectrometer]).wavelengths();
     sPlot.hasDataX = true;
-    sPlot.data = (*spectrometerSet[activeSpectrometer]).data();
-    sPlot.Npts = (*spectrometerSet[activeSpectrometer]).size();
+    sPlot.data = (*spectrometer_set[active_spectrometer]).data();
+    sPlot.Npts = (*spectrometer_set[active_spectrometer]).size();
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceYmin;
     sPlot.forceYmax = forceYmax;
@@ -565,34 +523,34 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    if ((*spectrometerSet[activeSpectrometer]).get_overlay_count() > 0) {
+    if ((*spectrometer_set[active_spectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
         int secondAdded = -1;
-        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).get_overlay_count();
-        if ((*spectrometerSet[activeSpectrometer]).has_overlay_0) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(0);
+        sPlot.ExtraLines = (*spectrometer_set[active_spectrometer]).get_overlay_count();
+        if ((*spectrometer_set[active_spectrometer]).has_overlay_0) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay(0);
             firstAdded = 0;
         }
-        else if ((*spectrometerSet[activeSpectrometer]).has_overlay_1) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(1);
+        else if ((*spectrometer_set[active_spectrometer]).has_overlay_1) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay(1);
             firstAdded = 1;
         }
-        else if ((*spectrometerSet[activeSpectrometer]).has_overlay_2) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
+        else if ((*spectrometer_set[active_spectrometer]).has_overlay_2) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay(2);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).has_overlay_1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay(1);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).has_overlay_2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometer_set[active_spectrometer]).has_overlay_1) sPlot.data3 = (*spectrometer_set[active_spectrometer]).get_overlay(1);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometer_set[active_spectrometer]).has_overlay_2) sPlot.data3 = (*spectrometer_set[active_spectrometer]).get_overlay(2);
 
-        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometer_set[active_spectrometer]).get_overlay(2);
     }
     sPlot.plot(cr);
 }
 
 void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    int activeSpectrometer = theGui.pulldowns[0].getValue();
-    if ((activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).initialized()) {
-        theGui.console.cPrint("Not initialized - error {}\n", (*spectrometerSet[0]).get_error_code());
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
+        theGui.console.cPrint("Not initialized - error {}\n", (*spectrometer_set[0]).get_error_code());
         return;
     }
 
@@ -638,11 +596,11 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
     double fMax = theGui.text_boxes[17].valueDouble();
 
     if (fMax == 0.0) {
-        fMax = (*spectrometerSet[activeSpectrometer]).wavelengths()[0];
+        fMax = (*spectrometer_set[active_spectrometer]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
     }
     if (fMin == 0.0) {
-        fMin = (*spectrometerSet[activeSpectrometer]).wavelengths()[(*spectrometerSet[activeSpectrometer]).size() - 1];
+        fMin = (*spectrometer_set[active_spectrometer]).wavelengths()[(*spectrometer_set[active_spectrometer]).size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
     }
     double dF = (fMax - fMin) / static_cast<double>(num_freqs - 1);
@@ -651,9 +609,9 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
         frequencies[i] = fMin + static_cast<double>(i) * dF;
     }
     std::vector<double> liveSpectrum;
-    if (theGui.running_live() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock() && num_freqs > 0) {
-        (*spectrometerSet[activeSpectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        liveSpectrum = (*spectrometerSet[activeSpectrometer]).acquire_single_frequency(frequencies);
+    if (theGui.running_live() && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).checkLock() && num_freqs > 0) {
+        (*spectrometer_set[active_spectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+        liveSpectrum = (*spectrometer_set[active_spectrometer]).acquire_single_frequency(frequencies);
     }
     else return;
 
@@ -700,26 +658,26 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    if ((*spectrometerSet[activeSpectrometer]).get_overlay_count() > 0) {
+    if ((*spectrometer_set[active_spectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
         int secondAdded = -1;
-        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).get_overlay_count();
-        if ((*spectrometerSet[activeSpectrometer]).has_overlay_0) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(0, frequencies);
+        sPlot.ExtraLines = (*spectrometer_set[active_spectrometer]).get_overlay_count();
+        if ((*spectrometer_set[active_spectrometer]).has_overlay_0) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(0, frequencies);
             firstAdded = 0;
         }
-        else if ((*spectrometerSet[activeSpectrometer]).has_overlay_1) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(1, frequencies);
+        else if ((*spectrometer_set[active_spectrometer]).has_overlay_1) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(1, frequencies);
             firstAdded = 1;
         }
-        else if ((*spectrometerSet[activeSpectrometer]).has_overlay_2) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(2, frequencies);
+        else if ((*spectrometer_set[active_spectrometer]).has_overlay_2) {
+            sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(2, frequencies);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).has_overlay_1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(1, frequencies);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).has_overlay_2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(2, frequencies);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometer_set[active_spectrometer]).has_overlay_1) sPlot.data3 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(1, frequencies);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometer_set[active_spectrometer]).has_overlay_2) sPlot.data3 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(2, frequencies);
 
-        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).get_overlay_frequency(2, frequencies);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(2, frequencies);
     }
     sPlot.plot(cr);
 }
@@ -765,17 +723,17 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
     double fMin = theGui.text_boxes[16].valueDouble();
     double fMax = theGui.text_boxes[17].valueDouble();
     if (fMax == 0.0) {
-        fMax = (*spectrometerSet[0]).wavelengths()[0];
+        fMax = (*spectrometer_set[0]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
-        for (int i = 1; i < spectrometerSet.size(); i++) {
-            fMax = maxN(fMax, 1e-3 * lightC<double>() / (*spectrometerSet[i]).wavelengths()[0]);
+        for (int i = 1; i < spectrometer_set.size(); i++) {
+            fMax = maxN(fMax, 1e-3 * lightC<double>() / (*spectrometer_set[i]).wavelengths()[0]);
         }
     }
     if (fMin == 0.0) {
-        fMin = (*spectrometerSet[0]).wavelengths()[(*spectrometerSet[0]).size() - 1];
+        fMin = (*spectrometer_set[0]).wavelengths()[(*spectrometer_set[0]).size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
-        for (int i = 1; i < spectrometerSet.size(); i++) {
-            fMin = minN(fMin, 1e-3 * lightC<double>() / (*spectrometerSet[i]).wavelengths()[(*spectrometerSet[0]).size() - 1]);
+        for (int i = 1; i < spectrometer_set.size(); i++) {
+            fMin = minN(fMin, 1e-3 * lightC<double>() / (*spectrometer_set[i]).wavelengths()[(*spectrometer_set[0]).size() - 1]);
         }
     }
 
@@ -784,10 +742,10 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
     for (size_t i = 0; i < num_freqs; i++) {
         frequencies[i] = fMin + static_cast<double>(i) * dF;
     }
-    std::vector<std::vector<double>> liveSpectra(spectrometerSet.size());
+    std::vector<std::vector<double>> liveSpectra(spectrometer_set.size());
     if (theGui.running_live() && num_freqs > 0) {
-        for (int i = 0; i < spectrometerSet.size(); i++) {
-            liveSpectra[i] = (*spectrometerSet[i]).acquire_single_frequency(frequencies);
+        for (int i = 0; i < spectrometer_set.size(); i++) {
+            liveSpectra[i] = (*spectrometer_set[i]).acquire_single_frequency(frequencies);
         }
     }
     else return;
@@ -895,10 +853,10 @@ void draw_interference_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, in
         overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(), theGui.text_boxes[11].valueDouble(), theGui.text_boxes[12].valueDouble(), 1);
     }
 
-    if (theGui.running_live() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+    if (theGui.running_live() && ! (*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+        (*spectrometer_set[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
-        the_interference_controller.acquire_new_interferogram((*spectrometerSet[theGui.pulldowns[0].getValue()]));
+        the_interference_controller.acquire_new_interferogram((*spectrometer_set[theGui.pulldowns[0].getValue()]));
     }
     sPlot.height = height;
     sPlot.width = width;
@@ -989,10 +947,10 @@ void draw_interference_spectrum_time(GtkDrawingArea* area, cairo_t* cr, int widt
     double t0 = theGui.text_boxes[18].valueDouble();
     double sigma = theGui.text_boxes[19].valueDouble();
     double ord = theGui.text_boxes[20].valueDouble();
-    if (theGui.running_live() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+    if (theGui.running_live() && ! (*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+        (*spectrometer_set[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
-        the_interference_controller.acquire_new_interferogram((*spectrometerSet[theGui.pulldowns[0].getValue()]));
+        the_interference_controller.acquire_new_interferogram((*spectrometer_set[theGui.pulldowns[0].getValue()]));
     }
     the_interference_controller.set_time_filter(t0, sigma, ord);
     the_interference_controller.generate_time_plot();
@@ -1080,10 +1038,10 @@ void draw_interference_phase(GtkDrawingArea* area, cairo_t* cr, int width, int h
         overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(), theGui.text_boxes[11].valueDouble(), theGui.text_boxes[12].valueDouble(), 1);
     }
 
-    if (theGui.running_live() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+    if (theGui.running_live() && ! (*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+        (*spectrometer_set[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
-        the_interference_controller.acquire_new_phase((*spectrometerSet[theGui.pulldowns[0].getValue()]));
+        the_interference_controller.acquire_new_phase((*spectrometer_set[theGui.pulldowns[0].getValue()]));
     }
 
     sPlot.height = height;
@@ -1165,10 +1123,10 @@ void draw_interference_group_delay(GtkDrawingArea* area, cairo_t* cr, int width,
         overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(), theGui.text_boxes[11].valueDouble(), theGui.text_boxes[12].valueDouble(), 1);
     }
 
-    if (theGui.running_live() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+    if (theGui.running_live() && ! (*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+        (*spectrometer_set[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
-        the_interference_controller.acquire_new_phase((*spectrometerSet[theGui.pulldowns[0].getValue()]));
+        the_interference_controller.acquire_new_phase((*spectrometer_set[theGui.pulldowns[0].getValue()]));
     }
 
     sPlot.height = height;

@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <string>
 #include "interpolation.hpp"
 //Spectrometer class which handles the acquisition from the spectrometer, as well as the associated
 //buffers for the data and overlays
@@ -8,6 +9,8 @@ public:
     long device_id;
     int error;
     int pixel_count;
+    std::string name;
+    std::string serial_number;
     std::vector<double> read_buffer;
     std::vector<double> read_buffer_minus_dark;
     std::vector<double> wavelengths_buffer;
