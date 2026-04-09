@@ -20,15 +20,15 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
 void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drop_down_change_callback();
-void handleGetOverlay0();
-void handleGetOverlay1();
-void handleGetOverlay2();
+void handleget_overlay0();
+void handleget_overlay1();
+void handleget_overlay2();
 void handleCollapsePanel();
 void handleDeleteOverlay0();
 void handleDeleteOverlay1();
 void handleDeleteOverlay2();
-void handleGetDarkSpectrum();
-void handleDeleteDarkSpectrum();
+void handleGetdark_spectrum();
+void handleDeletedark_spectrum();
 void handleRefreshRequest();
 void savePathCallback();
 void handleSave();
@@ -39,11 +39,12 @@ void handleResetPhase();
 void handleSavePhase();
 void svgCallback();
 
-double modSquared(const std::complex<double>& x){
+double constexpr modSquared(const std::complex<double>& x){
     return x.real() * x.real() + x.imag() * x.imag();
 }
 
-std::vector<double> fornberg_stencil(const size_t order, const std::span<const double>& positions, const double position_out){
+//c++ port of the Rust code I wrote for the attoworld library
+constexpr std::vector<double> fornberg_stencil(const size_t order, const std::span<const double>& positions, const double position_out){
     size_t n_pos = positions.size();
     size_t cols = order + 1;
     std::vector<double> delta_current(n_pos * cols);
@@ -90,83 +91,40 @@ std::vector<double> fornberg_stencil(const size_t order, const std::span<const d
     return std::vector<double>(delta_current.begin() + order*n_pos, delta_current.begin() + cols*n_pos);
 }
 
-std::vector<double> wavelengthToFrequency(const std::vector<double>& frequencies, const std::vector<double>&wavelengths, const std::vector<double>&spectrumIn)
+constexpr inline double interp_fornberg(const double target_frequency, const std::span<const double> frequencies, const std::span<const double> wavelengths, const std::span<const double> spectrum_in){
+    const size_t stencil_width = 4;
+    const size_t stencil_offset = stencil_width/2u;
+    const double target_wavelength = constProd(lightC<double>(), 1e-3) / target_frequency;
+    size_t stencil_x_start = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), target_wavelength));
+    if(stencil_x_start < stencil_offset) {
+        stencil_x_start = 0;
+    }
+    else if(stencil_x_start >= wavelengths.size() - stencil_width){
+        stencil_x_start = wavelengths.size() - stencil_width;
+    }
+    else{
+        if(abs(wavelengths[stencil_x_start] - target_wavelength) > abs(wavelengths[stencil_x_start + 1] - target_wavelength)){
+            stencil_x_start++;
+        }
+        stencil_x_start -= stencil_offset;
+    }
+    std::span<const double> stencil_wavelengths = std::span(wavelengths).subspan(stencil_x_start, stencil_width);
+    auto stencil = fornberg_stencil(0, stencil_wavelengths, target_wavelength);
+    double interpolated_value = 0.0;
+    for(size_t i = 0; i < stencil_width; i++){
+        interpolated_value += stencil[i] * spectrum_in[stencil_x_start + i];
+    }
+    return target_wavelength * target_wavelength * 1e-6 * interpolated_value;
+}
+
+std::vector<double> wavelength_to_frequency(const std::span<const double> frequencies, const std::span<const double> wavelengths, const std::span<const double> spectrum_in)
 {
-    double dF = frequencies[1] - frequencies[0];
-    std::vector<double> spectrumOut(frequencies.size());
-
-    //lambda for performing single point linear interpolation
-    auto interpolateSingle = [&](double targetFrequency) {
-        double targetWavelength = constProd(lightC<double>(),1e-3) / targetFrequency;
-        if (targetFrequency == 0.0 || targetWavelength < wavelengths[1] || targetWavelength > wavelengths[wavelengths.size() - 1]) {
-            return 0.0;
-        }
-        // Find the index i such that wavelengths[i] <= targetWavelength <= wavelengths[i+1]
-        size_t i = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), targetWavelength));
-        if (i<1) return 0.0;
-        return (1e-6*targetWavelength*targetWavelength)*(spectrumIn[i - 1] + (spectrumIn[i] - spectrumIn[i - 1]) / (wavelengths[i] - wavelengths[i - 1]) * (targetWavelength - wavelengths[i - 1]));
-    };
-
-    //Lamba for cell averaged interpolation
-    auto interpolateBin = [&](double targetFrequency) {
-        double targetWavelength = constProd(lightC<double>(), 1e-3) / targetFrequency;
-        if (targetFrequency == 0.0 || targetWavelength < wavelengths[1] || targetWavelength > wavelengths[wavelengths.size() - 2]) {
-            return 0.0;
-        }
-
-        double lowEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency + 0.5 * dF);
-        double highEdge = constProd(lightC<double>(), 1e-3) / (targetFrequency - 0.5 * dF);
-
-        auto lowPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), lowEdge));
-        auto highPt = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), highEdge)) - 1;
-
-        //if the size of the cell is smaller than the data spacing, return linear interpolation value
-        if ((highPt - lowPt) < 2) return interpolateSingle(targetFrequency);
-
-        double lowValue = interpolateSingle(targetFrequency + 0.5 * dF);
-        double highValue = interpolateSingle(targetFrequency - 0.5 * dF);
-
-        double totalArea = (wavelengths[lowPt] - lowEdge) * (lowValue + spectrumIn[lowPt]);
-        totalArea += (highEdge - wavelengths[highPt]) * (highValue + spectrumIn[highPt]);
-        for (int i = 0; i < (highPt - lowPt); i++) {
-            totalArea += (wavelengths[i + lowPt + 1] - wavelengths[i + lowPt]) * (spectrumIn[i + lowPt + 1] + spectrumIn[i + lowPt]);
-        }
-
-        return (0.5e-6 * targetWavelength * targetWavelength) * totalArea / (highEdge - lowEdge);
-    };
-
-    auto interpolate_fornberg = [&](const double target_frequency){
-        const size_t stencil_width = 3;
-        const size_t stencil_offset = stencil_width/2u;
-        const double target_wavelength = constProd(lightC<double>(), 1e-3) / target_frequency;
-        size_t stencil_x_start = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), target_wavelength));
-        if(stencil_x_start < stencil_offset) {
-            stencil_x_start = 0;
-        }
-        else if(stencil_x_start >= wavelengths.size() - stencil_width){
-            stencil_x_start = wavelengths.size() - stencil_width;
-        }
-        else{
-            if(abs(wavelengths[stencil_x_start] - target_wavelength) > abs(wavelengths[stencil_x_start + 1] - target_wavelength)){
-                stencil_x_start++;
-            }
-        }
-        std::span<const double> stencil_wavelengths = std::span(wavelengths).subspan(stencil_x_start, stencil_width);
-        auto stencil = fornberg_stencil(0, stencil_wavelengths, target_wavelength);
-        double interpolated_value = 0.0;
-        for(size_t i = 0; i < stencil_width; i++){
-            interpolated_value += stencil[i] * spectrumIn[stencil_x_start + i];
-        }
-        return target_wavelength * target_wavelength * 1e-6 * interpolated_value;
-    };
-
+    std::vector<double> spectrum_out(frequencies.size());
 #pragma omp parallel for
     for (int j = 0; j < frequencies.size(); j++) {
-        //spectrumOut[j] = interpolateBin(frequencies[j]);
-        spectrumOut[j] = interpolate_fornberg(frequencies[j]);
+        spectrum_out[j] = interp_fornberg(frequencies[j], frequencies, wavelengths, spectrum_in);
     }
-
-    return spectrumOut;
+    return spectrum_out;
 }
 
 
@@ -174,47 +132,47 @@ std::vector<double> wavelengthToFrequency(const std::vector<double>& frequencies
 //buffers for the data and overlays
 class Spectrometer {
 public:
-    long deviceID;
+    long device_id;
     int error;
-    int pixelCount;
-    std::vector<double> readBuffer;
-    std::vector<double> readBufferMinusDark;
-    std::vector<double> wavelengthsBuffer;
+    int pixel_count;
+    std::vector<double> read_buffer;
+    std::vector<double> read_buffer_minus_dark;
+    std::vector<double> wavelengths_buffer;
     std::vector<double> overlay0;
-    std::vector<double> overlay0MinusDark;
+    std::vector<double> overlay0_minus_dark;
     std::vector<double> overlay1;
-    std::vector<double> overlay1MinusDark;
+    std::vector<double> overlay1_minus_dark;
     std::vector<double> overlay2;
-    std::vector<double> overlay2MinusDark;
+    std::vector<double> overlay2_minus_dark;
     std::vector<double> overlay0F;
     std::vector<double> overlay1F;
     std::vector<double> overlay2F;
-    std::vector<double> darkSpectrum;
-    bool hasDarkSpectrum = false;
+    std::vector<double> dark_spectrum;
+    bool hasdark_spectrum = false;
     int lastOverlay = -1;
     bool isInitialized = false;
     bool isLocked = false;
-    Spectrometer(long _deviceID, int _pixelCount) :
-        deviceID(_deviceID),
-        pixelCount(_pixelCount),
-        readBuffer(pixelCount),
-        readBufferMinusDark(pixelCount),
-        overlay0(pixelCount),
-        overlay0MinusDark(pixelCount),
-        overlay1(pixelCount),
-        overlay1MinusDark(pixelCount),
-        overlay2(pixelCount),
-        overlay2MinusDark(pixelCount),
-        darkSpectrum(pixelCount),
-        wavelengthsBuffer(pixelCount){}
-    void subtractDark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
-        if (!hasDarkSpectrum) {
+    Spectrometer(long _device_id, int _pixel_count) :
+        device_id(_device_id),
+        pixel_count(_pixel_count),
+        read_buffer(pixel_count),
+        read_buffer_minus_dark(pixel_count),
+        overlay0(pixel_count),
+        overlay0_minus_dark(pixel_count),
+        overlay1(pixel_count),
+        overlay1_minus_dark(pixel_count),
+        overlay2(pixel_count),
+        overlay2_minus_dark(pixel_count),
+        dark_spectrum(pixel_count),
+        wavelengths_buffer(pixel_count){}
+    void subtract_dark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
+        if (!hasdark_spectrum) {
             dataMinusDark = dataVector;
             return;
         }
 
-        for (size_t i = 0; i < pixelCount; i++) {
-            dataMinusDark[i] = dataVector[i] - darkSpectrum[i];
+        for (size_t i = 0; i < pixel_count; i++) {
+            dataMinusDark[i] = dataVector[i] - dark_spectrum[i];
         }
     }
 
@@ -222,11 +180,11 @@ public:
     bool hasOverlay1 = false;
     bool hasOverlay2 = false;
     virtual ~Spectrometer(){}
-    virtual void setIntegrationTime(unsigned long integrationTimeMicroseconds) = 0;
-    virtual void acquireSingle() = 0;
-    virtual std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) = 0;
-    virtual void acquireOverlay(int overlayIndex) = 0;
-    virtual void acquireDarkSpectrum() = 0;
+    virtual void set_integration_time(unsigned long integrationTimeMicroseconds) = 0;
+    virtual void acquire_single() = 0;
+    virtual std::vector<double> acquire_single_frequency(const std::vector<double>& frequencies) = 0;
+    virtual void acquire_overlay(int overlayIndex) = 0;
+    virtual void acquire_dark_spectrum() = 0;
 
     bool initialized() {
         return isInitialized;
@@ -240,45 +198,45 @@ public:
     bool checkLock() {
         return isLocked;
     }
-    void disableDarkSpectrum() {
-        hasDarkSpectrum = false;
+    void disabledark_spectrum() {
+        hasdark_spectrum = false;
     }
-    int getOverlayCount() {
+    int get_overlay_count() {
         int overlayCount = 0;
         if (hasOverlay0) overlayCount++;
         if (hasOverlay1) overlayCount++;
         if (hasOverlay2) overlayCount++;
         return overlayCount;
     }
-    double* getOverlay(int overlayIndex) {
+    double* get_overlay(int overlayIndex) {
         switch (overlayIndex) {
         case 0:
-            if(hasDarkSpectrum) return overlay0MinusDark.data();
+            if(hasdark_spectrum) return overlay0_minus_dark.data();
             return overlay0.data();
         case 1:
-            if (hasDarkSpectrum) return overlay1MinusDark.data();
+            if (hasdark_spectrum) return overlay1_minus_dark.data();
             return overlay1.data();
         case 2:
-            if (hasDarkSpectrum) return overlay2MinusDark.data();
+            if (hasdark_spectrum) return overlay2_minus_dark.data();
             return overlay2.data();
         default:
             return nullptr;
         }
     }
 
-    double* getOverlayFrequency(int overlayIndex, const std::vector<double> frequencies) {
+    double* get_overlayFrequency(int overlayIndex, const std::vector<double> frequencies) {
         switch (overlayIndex) {
         case 0:
-            if (hasDarkSpectrum) overlay0F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay0MinusDark);
-            else overlay0F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay0);
+            if (hasdark_spectrum) overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0_minus_dark);
+            else overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0);
             return overlay0F.data();
         case 1:
-            if (hasDarkSpectrum) overlay1F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay1MinusDark);
-            overlay1F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay1);
+            if (hasdark_spectrum) overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1_minus_dark);
+            overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1);
             return overlay1F.data();
         case 2:
-            if (hasDarkSpectrum) overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2MinusDark);
-            overlay2F = wavelengthToFrequency(frequencies, wavelengthsBuffer, overlay2);
+            if (hasdark_spectrum) overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2_minus_dark);
+            overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2);
             return overlay2F.data();
         default:
             return nullptr;
@@ -300,31 +258,31 @@ public:
     }
 
     double* data() {
-        if (hasDarkSpectrum) { return readBufferMinusDark.data(); }
+        if (hasdark_spectrum) { return read_buffer_minus_dark.data(); }
         else {
-            return readBuffer.data();
+            return read_buffer.data();
         }
     }
 
     void appendBufferTo(std::vector<double>& outputBuffer) {
-        if (!hasDarkSpectrum) {
-            outputBuffer.insert(outputBuffer.end(), readBuffer.begin(), readBuffer.end());
+        if (!hasdark_spectrum) {
+            outputBuffer.insert(outputBuffer.end(), read_buffer.begin(), read_buffer.end());
         }
         else {
-            outputBuffer.insert(outputBuffer.end(), readBufferMinusDark.begin(), readBufferMinusDark.end());
+            outputBuffer.insert(outputBuffer.end(), read_buffer_minus_dark.begin(), read_buffer_minus_dark.end());
         }
     }
 
     double* wavelengths() {
-        return wavelengthsBuffer.data();
+        return wavelengths_buffer.data();
     }
 
     std::vector<double> wavelengthsCopy() {
-        return wavelengthsBuffer;
+        return wavelengths_buffer;
     }
 
     size_t size() {
-        return pixelCount;
+        return pixel_count;
     }
 
     int getErrorCode() {
@@ -335,57 +293,57 @@ public:
 
 class OceanSpectrometer : public Spectrometer{
 public:
-	OceanSpectrometer(long deviceIDinput) :
-	    Spectrometer(deviceIDinput, odapi_get_formatted_spectrum_length(deviceIDinput, &error))
+	OceanSpectrometer(long device_idinput) :
+	    Spectrometer(device_idinput, odapi_get_formatted_spectrum_length(device_idinput, &error))
 	{
         isInitialized = (error==0);
-        if(isInitialized) odapi_get_wavelengths(deviceID, &error, wavelengthsBuffer.data(), pixelCount);
+        if(isInitialized) odapi_get_wavelengths(device_id, &error, wavelengths_buffer.data(), pixel_count);
 	}
     virtual ~OceanSpectrometer() override {
-        odapi_close_device(deviceID, &error);
+        odapi_close_device(device_id, &error);
     }
 
-    void setIntegrationTime(unsigned long integrationTimeMicroseconds) override {
-        odapi_set_integration_time_micros(deviceID, &error, integrationTimeMicroseconds);
+    void set_integration_time(unsigned long integrationTimeMicroseconds) override {
+        odapi_set_integration_time_micros(device_id, &error, integrationTimeMicroseconds);
     }
 
-    void acquireSingle() override {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
-        subtractDark(readBuffer, readBufferMinusDark);
+    void acquire_single() override {
+        odapi_get_formatted_spectrum(device_id, &error, read_buffer.data(), pixel_count);
+        subtract_dark(read_buffer, read_buffer_minus_dark);
     }
 
-    std::vector<double> acquireSingleFrequency(const std::vector<double>& frequencies) override {
-        odapi_get_formatted_spectrum(deviceID, &error, readBuffer.data(), pixelCount);
-        subtractDark(readBuffer, readBufferMinusDark);
-        return wavelengthToFrequency(frequencies, wavelengthsBuffer, readBufferMinusDark);
+    std::vector<double> acquire_single_frequency(const std::vector<double>& frequencies) override {
+        odapi_get_formatted_spectrum(device_id, &error, read_buffer.data(), pixel_count);
+        subtract_dark(read_buffer, read_buffer_minus_dark);
+        return wavelength_to_frequency(frequencies, wavelengths_buffer, read_buffer_minus_dark);
     }
 
-    void acquireOverlay(int overlayIndex) override {
+    void acquire_overlay(int overlayIndex) override {
         switch (overlayIndex) {
         case 0:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay0.data(), pixelCount);
-            subtractDark(overlay0, overlay0MinusDark);
+            odapi_get_formatted_spectrum(device_id, &error, overlay0.data(), pixel_count);
+            subtract_dark(overlay0, overlay0_minus_dark);
             lastOverlay = 0;
             hasOverlay0 = true;
             break;
         case 1:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay1.data(), pixelCount);
-            subtractDark(overlay1, overlay1MinusDark);
+            odapi_get_formatted_spectrum(device_id, &error, overlay1.data(), pixel_count);
+            subtract_dark(overlay1, overlay1_minus_dark);
             lastOverlay = 1;
             hasOverlay1 = true;
             break;
         case 2:
-            odapi_get_formatted_spectrum(deviceID, &error, overlay2.data(), pixelCount);
-            subtractDark(overlay2, overlay2MinusDark);
+            odapi_get_formatted_spectrum(device_id, &error, overlay2.data(), pixel_count);
+            subtract_dark(overlay2, overlay2_minus_dark);
             lastOverlay = 2;
             hasOverlay2 = true;
             break;
         }
     }
-    void acquireDarkSpectrum() override {
-        darkSpectrum = std::vector<double>(pixelCount);
-        odapi_get_formatted_spectrum(deviceID, &error, darkSpectrum.data(), pixelCount);
-        hasDarkSpectrum = true;
+    void acquire_dark_spectrum() override {
+        dark_spectrum = std::vector<double>(pixel_count);
+        odapi_get_formatted_spectrum(device_id, &error, dark_spectrum.data(), pixel_count);
+        hasdark_spectrum = true;
     }
 };
 
@@ -410,9 +368,9 @@ public:
         data.reserve(N * spectrumSize);
         acquisitionCount = 0;
         acquisitionFinished = false;
-        s.setIntegrationTime((unsigned long)round(1000 * integrationTime));
+        s.set_integration_time((unsigned long)round(1000 * integrationTime));
         for (size_t i = 0; i < N; i++) {
-            s.acquireSingle();
+            s.acquire_single();
             s.appendBufferTo(data);
             acquisitionCount++;
             std::this_thread::sleep_for(std::chrono::milliseconds((size_t)(1000.0 * secondsToWait)));
@@ -640,10 +598,10 @@ public:
             setupFFT();
         }
         if (referenceDataA.size() > 0) {
-            referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
+            referenceDataAInterpolated = wavelength_to_frequency(frequencies, wavelengths, referenceDataA);
         }
         if (referenceDataB.size() > 0) {
-            referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
+            referenceDataBInterpolated = wavelength_to_frequency(frequencies, wavelengths, referenceDataB);
         }
 
         interferenceData = std::vector<double>(wavelengths);
@@ -663,14 +621,14 @@ public:
     }
 
     void acquireNewPhase(Spectrometer& s) {
-        interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
+        interferenceDataInterpolated = s.acquire_single_frequency(frequencies);
         calculatePhase();
         updateWithNewPhase();
         calculateGroupDelay();
     }
 
     void acquireNewInterferogram(Spectrometer& s) {
-        interferenceDataInterpolated = s.acquireSingleFrequency(frequencies);
+        interferenceDataInterpolated = s.acquire_single_frequency(frequencies);
     }
     void calculatePhase() {
         for (int i = 0; i < Nfreq; i++) {
@@ -804,7 +762,7 @@ public:
             }
             referenceDataA[i] *= normFactor;
         }
-        referenceDataAInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataA);
+        referenceDataAInterpolated = wavelength_to_frequency(frequencies, wavelengths, referenceDataA);
     }
 
     void acquireReferenceB(BatchAcquisition& batchControl, const size_t N, const double integrationTime, const double secondsToWait, Spectrometer& s) {
@@ -820,7 +778,7 @@ public:
             }
             referenceDataB[i] *= normFactor;
         }
-        referenceDataBInterpolated = wavelengthToFrequency(frequencies, wavelengths, referenceDataB);
+        referenceDataBInterpolated = wavelength_to_frequency(frequencies, wavelengths, referenceDataB);
     }
 
     void save(std::string& path, bool timestamp) {
@@ -951,16 +909,16 @@ public:
         GtkWidget* parentHandle = window.parentHandle();
 
         buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handleRunButton);
-        buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleGetOverlay0);
-        buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleGetOverlay1);
-        buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handleGetOverlay2);
+        buttons[1].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 3, buttonWidth/2, 1, handleget_overlay0);
+        buttons[2].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 4, buttonWidth / 2, 1, handleget_overlay1);
+        buttons[3].init(("\xf0\x9f\x93\x88"), parentHandle, buttonCol1, 5, buttonWidth / 2, 1, handleget_overlay2);
         buttons[3].init(("Acquire"), parentHandle, buttonCol1, 7, buttonWidth, 1, handleSave);
 
         buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 3, buttonWidth / 2, 1, handleDeleteOverlay0);
         buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 4, buttonWidth / 2, 1, handleDeleteOverlay1);
         buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1+buttonWidth/2, 5, buttonWidth / 2, 1, handleDeleteOverlay2);
-        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetDarkSpectrum);
-        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeleteDarkSpectrum);
+        buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handleGetdark_spectrum);
+        buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handleDeletedark_spectrum);
 
         buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handleReferenceA);
         buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handleReferenceB);
@@ -1080,17 +1038,17 @@ public:
             noSpectrometers = true;
             return;
         }
-        int deviceIdCount = odapi_get_number_of_device_ids();
+        int device_idCount = odapi_get_number_of_device_ids();
 
-        std::vector<long> deviceIds(deviceIdCount);
-        int retrievedIdCount = odapi_get_device_ids(deviceIds.data(), deviceIdCount);
+        std::vector<long> device_ids(device_idCount);
+        int retrievedIdCount = odapi_get_device_ids(device_ids.data(), device_idCount);
         int error = 0;
         console.cPrint("RID count {}\n", retrievedIdCount);
 
         spectrometerSet = std::vector<std::unique_ptr<Spectrometer>>();
 
-		for (int i = 0; i < deviceIdCount; i++) {
-			odapi_open_device(deviceIds[i], &error);
+		for (int i = 0; i < device_idCount; i++) {
+			odapi_open_device(device_ids[i], &error);
             if (error) {
                 console.cPrint("Couldn't open the device! Error code{}\n", error);
                 noSpectrometers = true;
@@ -1099,21 +1057,21 @@ public:
 			// Get the device name
 			const int nameLength = 128;
 			char deviceName[nameLength] = { 0 };
-			odapi_get_device_name(deviceIds[i], &error, deviceName, nameLength);
+			odapi_get_device_name(device_ids[i], &error, deviceName, nameLength);
 			if (error != 0) {
 				console.cPrint("Failed to retrieve the spectrometer type. The error code is:  {}\n", error);
                 noSpectrometers = true;
                 return;
 			}
 			// and serial number
-			int serialNumberLength = odapi_get_serial_number_maximum_length(deviceIds[i], &error);
+			int serialNumberLength = odapi_get_serial_number_maximum_length(device_ids[i], &error);
             if (error != 0) {
                 console.cPrint("Failed to retrieve the serial number length. The error code is:  {}\n", error);
                 noSpectrometers = true;
                 return;
             }
             std::unique_ptr<char> serialNumber(new char[serialNumberLength + 1] {});
-			odapi_get_serial_number(deviceIds[i], &error, serialNumber.get(), serialNumberLength);
+			odapi_get_serial_number(device_ids[i], &error, serialNumber.get(), serialNumberLength);
 			if (error != 0) {
 				console.cPrint("Failed to retrieve the spectrometer serial number. The error code is:  {}\n", error);
                 noSpectrometers = true;
@@ -1125,7 +1083,7 @@ public:
                 std::string newElement = Sformat("{}: {}", i, deviceName);
                 pulldowns[0].addElement(newElement.c_str());
 			}
-            spectrometerSet.push_back(std::make_unique<OceanSpectrometer>(deviceIds[i]));
+            spectrometerSet.push_back(std::make_unique<OceanSpectrometer>(device_ids[i]));
 		}
 	}
 
@@ -1153,8 +1111,8 @@ void handleRefreshRequest() {
     theGui.requestPlotUpdate();
 }
 
-void handleGetOverlay0() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireOverlay(0);
+void handleget_overlay0() {
+    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(0);
 }
 
 void drop_down_change_callback(){
@@ -1169,12 +1127,12 @@ void drop_down_change_callback(){
     gtk_widget_set_visible(theGui.textBoxes[20].elementHandle, visibility);
 }
 
-void handleGetOverlay1() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireOverlay(1);
+void handleget_overlay1() {
+    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(1);
 }
 
-void handleGetOverlay2() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireOverlay(2);
+void handleget_overlay2() {
+    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_overlay(2);
 }
 
 void handleCollapsePanel() {
@@ -1193,12 +1151,12 @@ void handleDeleteOverlay2() {
     (*spectrometerSet[theGui.pulldowns[0].getValue()]).deleteOverlay(2);
 }
 
-void handleGetDarkSpectrum() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquireDarkSpectrum();
+void handleGetdark_spectrum() {
+    (*spectrometerSet[theGui.pulldowns[0].getValue()]).acquire_dark_spectrum();
 }
 
-void handleDeleteDarkSpectrum() {
-    (*spectrometerSet[theGui.pulldowns[0].getValue()]).disableDarkSpectrum();
+void handleDeletedark_spectrum() {
+    (*spectrometerSet[theGui.pulldowns[0].getValue()]).disabledark_spectrum();
 }
 
 void acquisitionThread(int activeSpectrometer, size_t N, double integrationTime, double secondsToWait, std::string path, bool timestamp) {
@@ -1356,8 +1314,8 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     }
 
     if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock()) {
-        (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
-        (*spectrometerSet[activeSpectrometer]).acquireSingle();
+        (*spectrometerSet[activeSpectrometer]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        (*spectrometerSet[activeSpectrometer]).acquire_single();
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
@@ -1403,26 +1361,26 @@ void drawSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    if ((*spectrometerSet[activeSpectrometer]).getOverlayCount() > 0) {
+    if ((*spectrometerSet[activeSpectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
         int secondAdded = -1;
-        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).getOverlayCount();
+        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).get_overlay_count();
         if ((*spectrometerSet[activeSpectrometer]).hasOverlay0) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlay(0);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(0);
             firstAdded = 0;
         }
         else if ((*spectrometerSet[activeSpectrometer]).hasOverlay1) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlay(1);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(1);
             firstAdded = 1;
         }
         else if ((*spectrometerSet[activeSpectrometer]).hasOverlay2) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(1);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay(1);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
 
-        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).getOverlay(2);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).get_overlay(2);
     }
     sPlot.plot(cr);
 }
@@ -1492,8 +1450,8 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     }
     std::vector<double> liveSpectrum;
     if (theGui.runningLive() && (activeSpectrometer < spectrometerSet.size()) && !(*spectrometerSet[activeSpectrometer]).checkLock() && Nfreq > 0) {
-        (*spectrometerSet[activeSpectrometer]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
-        liveSpectrum = (*spectrometerSet[activeSpectrometer]).acquireSingleFrequency(frequencies);
+        (*spectrometerSet[activeSpectrometer]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        liveSpectrum = (*spectrometerSet[activeSpectrometer]).acquire_single_frequency(frequencies);
     }
     else return;
 
@@ -1540,26 +1498,26 @@ void drawSpectrumFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    if ((*spectrometerSet[activeSpectrometer]).getOverlayCount() > 0) {
+    if ((*spectrometerSet[activeSpectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
         int secondAdded = -1;
-        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).getOverlayCount();
+        sPlot.ExtraLines = (*spectrometerSet[activeSpectrometer]).get_overlay_count();
         if ((*spectrometerSet[activeSpectrometer]).hasOverlay0) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(0, frequencies);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(0, frequencies);
             firstAdded = 0;
         }
         else if ((*spectrometerSet[activeSpectrometer]).hasOverlay1) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(1, frequencies);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(1, frequencies);
             firstAdded = 1;
         }
         else if ((*spectrometerSet[activeSpectrometer]).hasOverlay2) {
-            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(2, frequencies);
+            sPlot.data2 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(2, frequencies);
             firstAdded = 2;
         }
-        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(1, frequencies);
-        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(2, frequencies);
+        if (sPlot.ExtraLines > 1 && firstAdded != 1 && (*spectrometerSet[activeSpectrometer]).hasOverlay1) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(1, frequencies);
+        else if (sPlot.ExtraLines > 1 && firstAdded != 2 && (*spectrometerSet[activeSpectrometer]).hasOverlay2) sPlot.data3 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(2, frequencies);
 
-        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).getOverlayFrequency(2, frequencies);
+        if (sPlot.ExtraLines > 2) sPlot.data4 = (*spectrometerSet[activeSpectrometer]).get_overlayFrequency(2, frequencies);
     }
     sPlot.plot(cr);
 }
@@ -1628,7 +1586,7 @@ void drawSpectraFrequency(GtkDrawingArea* area, cairo_t* cr, int width, int heig
     std::vector<std::vector<double>> liveSpectra(spectrometerSet.size());
     if (theGui.runningLive() && Nfreq > 0) {
         for (int i = 0; i < spectrometerSet.size(); i++) {
-            liveSpectra[i] = (*spectrometerSet[i]).acquireSingleFrequency(frequencies);
+            liveSpectra[i] = (*spectrometerSet[i]).acquire_single_frequency(frequencies);
         }
     }
     else return;
@@ -1738,7 +1696,7 @@ void drawInterferenceSpectrum(GtkDrawingArea* area, cairo_t* cr, int width, int 
     }
 
     if (theGui.runningLive() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewInterferogram((*spectrometerSet[theGui.pulldowns[0].getValue()]));
     }
@@ -1833,7 +1791,7 @@ void drawInterferenceSpectrumTime(GtkDrawingArea* area, cairo_t* cr, int width, 
     double sigma = theGui.textBoxes[19].valueDouble();
     double ord = theGui.textBoxes[20].valueDouble();
     if (theGui.runningLive() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewInterferogram((*spectrometerSet[theGui.pulldowns[0].getValue()]));
     }
@@ -1925,7 +1883,7 @@ void drawInterferencePhase(GtkDrawingArea* area, cairo_t* cr, int width, int hei
     }
 
     if (theGui.runningLive() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewPhase((*spectrometerSet[theGui.pulldowns[0].getValue()]));
     }
@@ -2011,7 +1969,7 @@ void drawInterferenceGroupDelay(GtkDrawingArea* area, cairo_t* cr, int width, in
     }
 
     if (theGui.runningLive() && ! (*spectrometerSet[theGui.pulldowns[0].getValue()]).checkLock()) {
-        (*spectrometerSet[theGui.pulldowns[0].getValue()]).setIntegrationTime((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
+        (*spectrometerSet[theGui.pulldowns[0].getValue()]).set_integration_time((unsigned long)round(1000 * theGui.textBoxes[0].valueDouble()));
         theInterferenceController.setAveraging(theGui.checkBoxes[3].isChecked());
         theInterferenceController.acquireNewPhase((*spectrometerSet[theGui.pulldowns[0].getValue()]));
     }
