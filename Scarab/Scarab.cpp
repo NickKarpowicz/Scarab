@@ -434,7 +434,6 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 
     int active_spectrometer = theGui.pulldowns[0].getValue();
     if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
-        theGui.console.cPrint("Not initialized - error {}\n",(*spectrometer_set[0]).get_error_code());
         return;
     }
 
@@ -550,7 +549,6 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     int active_spectrometer = theGui.pulldowns[0].getValue();
     if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
-        theGui.console.cPrint("Not initialized - error {}\n", (*spectrometer_set[0]).get_error_code());
         return;
     }
 

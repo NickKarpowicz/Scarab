@@ -6,8 +6,7 @@
 //buffers for the data and overlays
 class Spectrometer {
 public:
-    long device_id;
-    int error;
+
     int pixel_count;
     std::string name;
     std::string serial_number;
@@ -25,11 +24,10 @@ public:
     std::vector<double> overlay2F;
     std::vector<double> dark_spectrum;
     bool hasdark_spectrum = false;
-    int lastOverlay = -1;
-    bool isInitialized = false;
-    bool isLocked = false;
-    Spectrometer(long _device_id, int _pixel_count) :
-        device_id(_device_id),
+    int last_overlay = -1;
+    bool is_initialized = false;
+    bool is_locked = false;
+    Spectrometer(int _pixel_count) :
         pixel_count(_pixel_count),
         read_buffer(pixel_count),
         read_buffer_minus_dark(pixel_count),
@@ -63,16 +61,16 @@ public:
     virtual void acquire_dark_spectrum() = 0;
 
     bool initialized() {
-        return isInitialized;
+        return is_initialized;
     }
     void lock() {
-        isLocked = true;
+        is_locked = true;
     }
     void unlock() {
-        isLocked = false;
+        is_locked = false;
     }
     bool checkLock() {
-        return isLocked;
+        return is_locked;
     }
     void disabledark_spectrum() {
         hasdark_spectrum = false;
@@ -161,7 +159,4 @@ public:
         return pixel_count;
     }
 
-    int get_error_code() {
-        return error;
-    }
 };
