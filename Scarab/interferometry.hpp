@@ -365,6 +365,7 @@ public:
     }
 
     void save(std::string& path, bool timestamp) {
+        if(!is_configured) return;
         if (timestamp) {
             auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             size_t lastPeriod = path.find_last_of(".");

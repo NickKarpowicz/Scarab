@@ -4,7 +4,7 @@
 #include "ocean_spectrometer.hpp"
 #include "batch_acquisition.hpp"
 #include "interferometry.hpp"
-
+#include <iostream>
 bool update_display();
 void handle_run_button();
 void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -433,7 +433,8 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
     }
 
     int active_spectrometer = theGui.pulldowns[0].getValue();
-    if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
+    if(active_spectrometer < 0) return;
+    if (active_spectrometer != -1 && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
         return;
     }
 
@@ -548,6 +549,7 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 
 void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
         return;
     }
@@ -681,6 +683,8 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
 }
 
 void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -799,6 +803,8 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
 }
 
 void draw_interference_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     handle_reset_controller();
     if (!the_interference_controller.check_configuration_status()) handle_reset_controller();
     LwePlot sPlot;
@@ -892,6 +898,8 @@ void draw_interference_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, in
 }
 
 void draw_interference_spectrum_time(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     handle_reset_controller();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -985,6 +993,8 @@ void draw_interference_spectrum_time(GtkDrawingArea* area, cairo_t* cr, int widt
 
 
 void draw_interference_phase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     handle_reset_controller();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
@@ -1070,6 +1080,8 @@ void draw_interference_phase(GtkDrawingArea* area, cairo_t* cr, int width, int h
 }
 
 void draw_interference_group_delay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    int active_spectrometer = theGui.pulldowns[0].getValue();
+    if(active_spectrometer < 0) return;
     handle_reset_controller();
     LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
