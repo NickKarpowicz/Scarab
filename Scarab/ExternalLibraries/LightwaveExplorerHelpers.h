@@ -6,9 +6,10 @@
 #define hostOrDevice
 #endif
 #include <algorithm>
+#include <string>
 //variadic template to constexpr the product of a bunch of values
 //in a way that keeps Xe Graphics happy (no doubles)
-//convention: if there are multiple types as inputs, 
+//convention: if there are multiple types as inputs,
 //return type is the type of the first argument
 template<typename T>
 hostOrDevice static constexpr T constProd(const T x) {

@@ -1,16 +1,12 @@
 #pragma once
 #include <gtk/gtk.h>
 #include <sstream>
-#include <fstream>
-#include <complex>
 #include <vector>
 #include <array>
 #include <string>
 #include <algorithm>
-#include <thread>
 #include <mutex>
 #include <gcem.hpp>
-#include "LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #import<Cocoa/Cocoa.h>

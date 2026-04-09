@@ -1,4 +1,3 @@
-#include <sstream>
 #include <fstream>
 #include <complex>
 #include <vector>
@@ -6,7 +5,6 @@
 #include <string>
 #include <algorithm>
 #include <thread>
-#include <mutex>
 #include <gcem.hpp>
 #include <cairo.h>
 #include "LightwaveExplorerHelpers.h"
@@ -297,7 +295,6 @@ class LweImage {
             const double y_offset = 0.0) {
             if (Nx * Ny == 0) return;
             createBitmapFromArray(Nx, Ny, data, cm);
-            std::unique_lock GTKlock(GTKmutex);
             const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
             cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                 pixels.data(),
@@ -432,7 +429,6 @@ public:
         if (image != nullptr) drawImage = true;
         if (drawImage) Npts = 5;
         if (Npts == 0) return 1;
-        std::unique_lock GTKlock(GTKmutex);
         if (SVGPath.length() > 5) makeSVG = true;
         int64_t iMin = 0;
         int64_t iMax = Npts;
