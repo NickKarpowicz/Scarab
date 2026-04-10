@@ -2,7 +2,6 @@
 #include <gtk/gtk.h>
 #include <sstream>
 #include <vector>
-#include <array>
 #include <string>
 #include <algorithm>
 #include <mutex>
@@ -62,6 +61,7 @@ public:
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
     }
     void vertical_thick(){
+        if(!GTK_IS_WIDGET(elementHandle)) return;
         std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_FILL);
     }
@@ -233,7 +233,6 @@ static gboolean scrollTextViewToEndHandler(gpointer data) {
 class LweConsole : public LweGuiElement {
     GtkWidget* consoleText{};
     bool hasNewText{};
-    int previousBufferSize{};
     GtkTextBuffer* buf{};
 public:
     std::string textBuffer;
@@ -686,6 +685,7 @@ public:
             NULL, NULL);
     }
     void queueDraw() {
+        if(!GTK_IS_WIDGET(elementHandle)) return;
         std::unique_lock GTKlock(GTKmutex);
         gtk_widget_queue_draw(elementHandle);
     }

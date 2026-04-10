@@ -44,12 +44,12 @@ class MainGui {
     bool queue_save_path_update = false;
     bool is_running_live = false;
 public:
-    LweTextBox text_boxes[54];
+    LweTextBox text_boxes[26];
     LweButton buttons[19];
     LweConsole console;
-    LweTextBox file_paths[4];
-    LwePulldown pulldowns[10];
-    LweDrawBox draw_boxes[8];
+    LweTextBox file_paths[2];
+    LwePulldown pulldowns[4];
+    LweDrawBox draw_boxes[4];
     LweCheckBox checkboxes[4];
     LweWindow window;
     std::string path_buffer;
@@ -183,10 +183,10 @@ public:
         file_paths[0].overwritePrint(std::format("DefaultOutput.txt"));
         checkboxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth/2, 8, 2, 1);
         buttons[17].init(("..."), parentHandle, buttonCol1 + buttonWidth / 2, 6, buttonWidth / 2, 1, save_path_callback, 0);
-        text_boxes[48].init(window.parentHandle(4), 3, 0, 2, 1);
-        text_boxes[49].init(window.parentHandle(4), 5, 0, 2, 1);
-        text_boxes[50].init(window.parentHandle(4), 9, 0, 2, 1);
-        text_boxes[51].init(window.parentHandle(4), 11, 0, 2, 1);
+        text_boxes[22].init(window.parentHandle(4), 3, 0, 2, 1);
+        text_boxes[23].init(window.parentHandle(4), 5, 0, 2, 1);
+        text_boxes[24].init(window.parentHandle(4), 9, 0, 2, 1);
+        text_boxes[25].init(window.parentHandle(4), 11, 0, 2, 1);
         draw_boxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         draw_boxes[0].setDrawingFunction(draw_spectrum);
         checkboxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
@@ -453,15 +453,15 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -568,15 +568,15 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -698,15 +698,15 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -819,14 +819,14 @@ void draw_interference_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, in
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
@@ -913,14 +913,14 @@ void draw_interference_spectrum_time(GtkDrawingArea* area, cairo_t* cr, int widt
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
@@ -1008,14 +1008,14 @@ void draw_interference_phase(GtkDrawingArea* area, cairo_t* cr, int width, int h
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
@@ -1095,14 +1095,14 @@ void draw_interference_group_delay(GtkDrawingArea* area, cairo_t* cr, int width,
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[48].valueDouble();
-    double xMax = theGui.text_boxes[49].valueDouble();
+    double xMin = theGui.text_boxes[22].valueDouble();
+    double xMax = theGui.text_boxes[23].valueDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[50].valueDouble();
-    double yMax = theGui.text_boxes[51].valueDouble();
+    double yMin = theGui.text_boxes[24].valueDouble();
+    double yMax = theGui.text_boxes[25].valueDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }

@@ -679,7 +679,7 @@ public:
                     ytVal = pow(10.0, minY) / unitY;
                 }
             }
-            if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
+            if (std::abs(ytVal) > 10.0 || std::abs(ytVal) < 0.01) {
                 messageBuffer = Sformat("{:.1e}", ytVal);
             }
             else {

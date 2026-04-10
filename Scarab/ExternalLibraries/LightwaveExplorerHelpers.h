@@ -5,7 +5,6 @@
 #else
 #define hostOrDevice
 #endif
-#include <algorithm>
 #include <string>
 //variadic template to constexpr the product of a bunch of values
 //in a way that keeps Xe Graphics happy (no doubles)

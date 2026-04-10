@@ -37,7 +37,6 @@ class SpectralInterferometry {
     std::vector<std::complex<double>> hilbert_time_buffer2;
     std::vector<double> hilbert_real_buffer;
     std::vector<double> hilbert_imag_buffer;
-    bool has_data = false;
     bool is_configured = false;
     bool use_averaging = true;
     double dF = 2e12;
