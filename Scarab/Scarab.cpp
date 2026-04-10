@@ -47,7 +47,6 @@ public:
     LweTextBox text_boxes[54];
     LweButton buttons[19];
     LweConsole console;
-    LweConsole sequence;
     LweTextBox file_paths[4];
     LwePulldown pulldowns[10];
     LweDrawBox draw_boxes[8];
@@ -127,10 +126,10 @@ public:
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"), parentHandle, buttonCol1, 2, buttonWidth / 2, 1, handle_get_dark_spectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"), parentHandle, buttonCol1 + buttonWidth / 2, 2, buttonWidth / 2, 1, handle_delete_dark_spectrum);
 
-        buttons[9].init(("Ref. A"), parentHandle, 0, 12, smallButton, 1, handle_reference_A);
-        buttons[10].init(("Ref. B"), parentHandle, smallButton, 12, smallButton, 1, handle_reference_B);
-        buttons[11].init(("Reset"), parentHandle, smallButton * 2, 12, smallButton, 1, handle_reset_phase);
-        buttons[12].init(("Save"), parentHandle, smallButton * 3, 12, smallButton, 1, handle_save_phase);
+        buttons[9].init(("Ref. A"), parentHandle, 0, 11, smallButton, 1, handle_reference_A);
+        buttons[10].init(("Ref. B"), parentHandle, smallButton, 11, smallButton, 1, handle_reference_B);
+        buttons[11].init(("Reset"), parentHandle, smallButton * 2, 11, smallButton, 1, handle_reset_phase);
+        buttons[12].init(("Save"), parentHandle, smallButton * 3, 11, smallButton, 1, handle_save_phase);
 
         //RGB active
         text_boxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
@@ -172,11 +171,11 @@ public:
         text_boxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
         text_boxes[15].overwritePrint(std::string("2048"));
 
-        text_boxes[18].init(parentHandle, textCol3, 11, 2, 1);
+        text_boxes[18].init(parentHandle, textCol3, 10, 2, 1);
         text_boxes[18].setMaxCharacters(6);
-        text_boxes[19].init(parentHandle, textCol4, 11, 2, 1);
+        text_boxes[19].init(parentHandle, textCol4, 10, 2, 1);
         text_boxes[19].setMaxCharacters(6);
-        text_boxes[20].init(parentHandle, textCol5, 11, 2, 1);
+        text_boxes[20].init(parentHandle, textCol5, 10, 2, 1);
         text_boxes[20].setMaxCharacters(6);
         text_boxes[18].setLabel(-3 * textWidth, 0, "Filter (t0, sig., ord.)");
         text_boxes[18].overwritePrint(std::string("300"));
@@ -226,7 +225,6 @@ public:
         gtk_widget_set_visible(text_boxes[20].elementHandle, false);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         console.cPrint("Attached spectrometers:\n");
-
         initializeSpectrometers();
         pulldowns[0].init(parentHandle, 0, 0, 12, 1);
 
@@ -327,7 +325,7 @@ void handle_get_dark_spectrum() {
 }
 
 void handle_delete_dark_spectrum() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).disabledark_spectrum();
+    (*spectrometer_set[theGui.pulldowns[0].getValue()]).disable_dark_spectrum();
 }
 
 void acquisition_thread(int active_spectrometer, size_t N, double integration_time, double seconds_to_wait, std::string path, bool timestamp) {

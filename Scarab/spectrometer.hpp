@@ -6,7 +6,6 @@
 //buffers for the data and overlays
 class Spectrometer {
 public:
-
     int pixel_count;
     std::string name;
     std::string serial_number;
@@ -72,7 +71,7 @@ public:
     bool checkLock() {
         return is_locked;
     }
-    void disabledark_spectrum() {
+    void disable_dark_spectrum() {
         has_dark_spectrum = false;
     }
     int get_overlay_count() {

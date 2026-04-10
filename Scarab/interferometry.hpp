@@ -20,14 +20,11 @@ class SpectralInterferometry {
     std::vector<double> reference_data_A_interpolated;
     std::vector<double> reference_data_B;
     std::vector<double> reference_data_B_interpolated;
-
     std::vector<double> spectral_phase;
     std::vector<double> spectral_phase_mean;
     std::vector<double> spectral_phase_mean_sqr;
     std::vector<double> group_delay;
     size_t phase_count = 0;
-
-
     std::vector<std::complex<double>> fft_data;
     std::vector<std::complex<double>> fft_reference_A;
     std::vector<std::complex<double>> fft_reference_B;
@@ -75,7 +72,6 @@ class SpectralInterferometry {
         fft_reference_B_real = time_filter;
         fft_data_real = time_filter;
     }
-
 
     void filtered_hilbert(std::vector<double>& inData,
         std::vector<double>& outDataReal,
@@ -380,12 +376,13 @@ public:
         std::ofstream fs(path, std::ios::binary);
         if (fs.fail()) return;
         fs.precision(10);
+        calculate_group_delay();
         for (size_t j = 0; j < num_freqs; j++) {
             fs << frequencies[j];
             fs << " ";
             fs << spectral_phase_mean[j];
             fs << " ";
-            fs << std::sqrt(spectral_phase_mean_sqr[j] / (phase_count - 1));
+            fs << group_delay[j];
             fs << " ";
             fs << reference_data_A_interpolated[j];
             fs << " ";

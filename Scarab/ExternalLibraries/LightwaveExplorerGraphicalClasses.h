@@ -12,15 +12,8 @@
 #import<Cocoa/Cocoa.h>
 #endif
 //GLOBAL VARIABLE: GTK MUTEX
-std::mutex GTKmutex;
-//temporary set of macros until std::format is on all platforms
-
+static std::mutex GTKmutex;
 #include <format>
-#define Sformat std::format
-#define Svformat std::vformat
-#define Smake_format_args std::make_format_args
-
-
 #include "LightwaveExplorerPlots.h"
 
 class LweGuiElement {
@@ -230,14 +223,14 @@ public:
     }
 };
 
-gboolean scrollTextViewToEndHandler(gpointer data) {
+static gboolean scrollTextViewToEndHandler(gpointer data) {
     std::unique_lock GTKlock(GTKmutex);
     GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(data));
     gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     return false;
 }
 
-void formatSequenceEscapeAngleBrackets(std::string& s) {
+static void formatSequenceEscapeAngleBrackets(std::string& s) {
     for (size_t i = 0; i < s.length(); ++i) {
         //find angle brackets signifying comments and escape
         //with &lt; or &gt; so they're not interpreted as
@@ -255,7 +248,7 @@ void formatSequenceEscapeAngleBrackets(std::string& s) {
     }
 }
 
-gboolean formatSequenceBuffer(gpointer data) {
+static gboolean formatSequenceBuffer(gpointer data) {
     GtkTextBuffer* buf = GTK_TEXT_BUFFER(data);
     GtkTextIter start;
     GtkTextIter stop;
@@ -874,52 +867,52 @@ public:
     }
 };
 
-class LweSlider : public LweGuiElement {
-    GtkEventController* eventController{};
-public:
-    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
-        gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
-        gtk_scale_set_value_pos(GTK_SCALE(elementHandle), GTK_POS_LEFT);
-        gtk_widget_set_hexpand(elementHandle, true);
-        gtk_widget_set_margin_top(elementHandle, 0);
-        gtk_widget_set_margin_bottom(elementHandle, 0);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
+// class LweSlider : public LweGuiElement {
+//     GtkEventController* eventController{};
+// public:
+//     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
+//         std::unique_lock GTKlock(GTKmutex);
+//         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
+//         gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
+//         gtk_scale_set_value_pos(GTK_SCALE(elementHandle), GTK_POS_LEFT);
+//         gtk_widget_set_hexpand(elementHandle, true);
+//         gtk_widget_set_margin_top(elementHandle, 0);
+//         gtk_widget_set_margin_bottom(elementHandle, 0);
+//         GTKlock.unlock();
+//         setPosition(grid, x, y, width, height);
 
-    }
-    int getIntValue() {
-        std::unique_lock GTKlock(GTKmutex);
-        return (int)gtk_range_get_value(GTK_RANGE(elementHandle));
-    }
-    double getDoubleValue() {
-        std::unique_lock GTKlock(GTKmutex);
-        return gtk_range_get_value(GTK_RANGE(elementHandle));
-    }
-    void setRange(double minVal, double maxVal) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_range_set_range(GTK_RANGE(elementHandle), minVal, maxVal);
-    }
-    void setDigits(int digits) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
-    }
-    void setFunction(auto sliderFunction) {
-        std::unique_lock GTKlock(GTKmutex);
-        g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
+//     }
+//     int getIntValue() {
+//         std::unique_lock GTKlock(GTKmutex);
+//         return (int)gtk_range_get_value(GTK_RANGE(elementHandle));
+//     }
+//     double getDoubleValue() {
+//         std::unique_lock GTKlock(GTKmutex);
+//         return gtk_range_get_value(GTK_RANGE(elementHandle));
+//     }
+//     void setRange(double minVal, double maxVal) {
+//         std::unique_lock GTKlock(GTKmutex);
+//         gtk_range_set_range(GTK_RANGE(elementHandle), minVal, maxVal);
+//     }
+//     void setDigits(int digits) {
+//         std::unique_lock GTKlock(GTKmutex);
+//         gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
+//     }
+//     void setFunction(auto sliderFunction) {
+//         std::unique_lock GTKlock(GTKmutex);
+//         g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
 
-    }
-    void setArrowFunction(auto arrowFunction){
-        eventController = gtk_event_controller_key_new();
-        g_signal_connect_object(eventController, "key-pressed", G_CALLBACK(arrowFunction), elementHandle, G_CONNECT_SWAPPED);
-        gtk_widget_add_controller(GTK_WIDGET(elementHandle), eventController);
-    }
-    void setValue(int value) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
-    }
-};
+//     }
+//     void setArrowFunction(auto arrowFunction){
+//         eventController = gtk_event_controller_key_new();
+//         g_signal_connect_object(eventController, "key-pressed", G_CALLBACK(arrowFunction), elementHandle, G_CONNECT_SWAPPED);
+//         gtk_widget_add_controller(GTK_WIDGET(elementHandle), eventController);
+//     }
+//     void setValue(int value) {
+//         std::unique_lock GTKlock(GTKmutex);
+//         gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
+//     }
+// };
 
 
 static void pathFromLoadDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
@@ -944,11 +937,11 @@ static void pathFromLoadDialogToStringCallback(GObject* gobject, GAsyncResult* r
     }
 }
 
-void pathFromLoadDialog(LweTextBox& destinationPathBox) {
+inline void pathFromLoadDialog(LweTextBox& destinationPathBox) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogCallback, &destinationPathBox);
 }
-void pathFromLoadDialog(std::string& destinationPath) {
+inline void pathFromLoadDialog(std::string& destinationPath) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogToStringCallback, &destinationPath);
 }
@@ -970,7 +963,7 @@ void pathFromLoadDialog(std::string& destinationPath) {
         destinationPath = std::string(g_file_get_path(file));
     }
 }
-void pathFromSaveDialog(LweTextBox& destinationPathBox) {
+inline void pathFromSaveDialog(LweTextBox& destinationPathBox) {
 #ifdef __APPLE__
     NSString* filePath;
     NSSavePanel* savePanel = [NSSavePanel savePanel];
@@ -1009,7 +1002,7 @@ std::string pathFromAppleSaveDialog() {
     }
 }
 #endif
-void pathFromSaveDialog(std::string& destinationPath, const std::string& suffix, const std::string& filetypeName) {
+inline void pathFromSaveDialog(std::string& destinationPath, const std::string& suffix, const std::string& filetypeName) {
 #ifdef __APPLE__
     NSString* filePath;
     NSSavePanel* savePanel = [NSSavePanel savePanel];
@@ -1049,7 +1042,7 @@ static void loadDataCallback(GObject* gobject, GAsyncResult* result, gpointer da
     }
 }
 
-void loadFromLoadDialog(loadingFunction loadingFunctionPointer) {
+inline void loadFromLoadDialog(loadingFunction loadingFunctionPointer) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog, NULL, NULL, loadDataCallback, reinterpret_cast<gpointer>(loadingFunctionPointer));
 }
