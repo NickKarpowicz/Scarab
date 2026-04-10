@@ -15,8 +15,8 @@ public:
     long device_id;
     int error=0;
 	OceanSpectrometer(long device_id_input) :
-	    device_id(device_id_input),
-	    Spectrometer(odapi_get_formatted_spectrum_length(open_ocean_spectrometer_wrapper(device_id_input, &error), &error))
+	    Spectrometer(odapi_get_formatted_spectrum_length(open_ocean_spectrometer_wrapper(device_id_input, &error), &error)),
+		device_id(device_id_input)
 	{
         is_initialized = (error==0);
         if(is_initialized) odapi_get_wavelengths(device_id, &error, wavelengths_buffer.data(), pixel_count);
@@ -27,9 +27,8 @@ public:
         name = std::string(device_name);
         // and serial number
         int serial_number_length = odapi_get_serial_number_maximum_length(device_id, &error);
-        std::unique_ptr<char> serialNumber(new char[serial_number_length + 1] {});
-        odapi_get_serial_number(device_id, &error, serialNumber.get(), serial_number_length);
-        serial_number = std::string(serialNumber.get());
+        serial_number = std::string(serial_number_length,'\0');
+        odapi_get_serial_number(device_id, &error, serial_number.data(), serial_number_length);
 	}
     virtual ~OceanSpectrometer() override {
         odapi_close_device(device_id, &error);
@@ -90,7 +89,6 @@ inline std::string open_ocean_spectrometers(std::vector<std::unique_ptr<Spectrom
 
     std::vector<long> device_ids(device_id_count);
     int retrieved_id_count = odapi_get_device_ids(device_ids.data(), device_id_count);
-    int error = 0;
     output += std::format("Ocean Optics spectrometer count {}\n", retrieved_id_count);
     for (int i = 0; i < device_id_count; i++) {
             spectrometer_set.push_back(std::make_unique<OceanSpectrometer>(device_ids[i]));

@@ -49,8 +49,7 @@ class SpectralInterferometry {
     size_t num_freqs = 512;
     size_t fft_size = 0;
     void unwrap(std::vector<double>& phaseInOut) {
-        double offset{};
-        for (int i = 1; i < num_freqs; i++) {
+        for (size_t i = 1; i < num_freqs; i++) {
             double delta = phaseInOut[i] - phaseInOut[i - 1];
             delta -= twoPi<double>() * round(delta / twoPi<double>());
             phaseInOut[i] = phaseInOut[i - 1] + delta;
@@ -95,7 +94,7 @@ class SpectralInterferometry {
 
         double dt = 1.0 / (num_freqs * dF);
         std::complex<double> ii(0.0, 1.0);
-        for (int i = 0; i < (num_freqs / 2 + 1); i++) {
+        for (size_t i = 0; i < (num_freqs / 2 + 1); i++) {
             hilbert_time_buffer[i] *=
                 std::exp(-std::pow(
                     (static_cast<double>(i) * dt - filter0) / filterSigma, filterOrd)
@@ -127,7 +126,7 @@ class SpectralInterferometry {
     void update_with_new_phase() {
         if (use_averaging) {
             phase_count++;
-            for (int i = 0; i < num_freqs; i++) {
+            for (size_t i = 0; i < num_freqs; i++) {
                 double delta = spectral_phase[i] - spectral_phase_mean[i];
                 spectral_phase_mean[i] += delta / phase_count;
                 double delta2 = spectral_phase[i] - spectral_phase_mean[i];
@@ -136,7 +135,7 @@ class SpectralInterferometry {
         }
         else {
             phase_count = 0;
-            for (int i = 0; i < num_freqs; i++) {
+            for (size_t i = 0; i < num_freqs; i++) {
                 spectral_phase_mean[i] = spectral_phase[i];
                 spectral_phase_mean_sqr[i] = 0.0;
             }
@@ -146,7 +145,7 @@ class SpectralInterferometry {
     void calculate_group_delay() {
         double dwFactor = 0.5/(dF * twoPi<double>());
         group_delay[0] = 2 * dwFactor * (spectral_phase_mean[1] - spectral_phase_mean[0]);
-        for (int i = 1; i < num_freqs-1; i++) {
+        for (size_t i = 1; i < num_freqs-1; i++) {
             group_delay[i] = dwFactor * (spectral_phase_mean[i + 1] - spectral_phase_mean[i - 1]);
         }
         group_delay[num_freqs - 1] = 2 * dwFactor * (spectral_phase_mean[num_freqs - 1] - spectral_phase_mean[num_freqs - 2]);
@@ -169,7 +168,7 @@ public:
         num_freqs = N;
         minF = fMin;
         maxF = fMax;
-        for (int i = 0; i < N; i++) {
+        for (size_t i = 0; i < N; i++) {
             frequencies[i] = fMin + static_cast<double>(i) * dF;
         }
         if (fft_size != num_freqs) {
@@ -209,12 +208,12 @@ public:
         interference_data_interpolated = s.acquire_single_frequency(frequencies);
     }
     void calculate_phase() {
-        for (int i = 0; i < num_freqs; i++) {
+        for (size_t i = 0; i < num_freqs; i++) {
             hilbert_real_buffer[i] = interference_data_interpolated[i] - reference_data_B_interpolated[i] - reference_data_A_interpolated[i];
         }
         filtered_hilbert(hilbert_real_buffer, hilbert_real_buffer, hilbert_imag_buffer, filterT0, filter_width, 8);
         spectral_phase = std::vector<double>(num_freqs);
-        for (int i = 0; i < num_freqs; i++) {
+        for (size_t i = 0; i < num_freqs; i++) {
             spectral_phase[i] = std::atan2(hilbert_real_buffer[i], hilbert_imag_buffer[i]);
         }
         unwrap(spectral_phase);
@@ -307,7 +306,7 @@ public:
             1.0);
         double dt = 1.0e3 / (num_freqs * dF);
         double max_signal = 0.0;
-        for (int i = 0; i < (num_freqs / 2 + 1); i++) {
+        for (size_t i = 0; i < (num_freqs / 2 + 1); i++) {
             constexpr auto modulus_squared = [](const std::complex<double>& x){
                 return x.real() * x.real() + x.imag() * x.imag();
             };
@@ -320,7 +319,7 @@ public:
                 / sqrt(2.0));
             fft_scale[i] = static_cast<double>(i) * dt;
         }
-        for (int i = 0; i < (num_freqs / 2 + 1); i++) {
+        for (size_t i = 0; i < (num_freqs / 2 + 1); i++) {
             time_filter[i] *= max_signal;
         }
     }
@@ -335,8 +334,8 @@ public:
         reference_data_A = std::vector<double>(wavelengths.size(), 0.0);
         double normFactor = 1.0 / static_cast<double>(N);
         std::vector<double> fullSet = batchControl.get_data_vector();
-        for (int i = 0; i < wavelengths.size(); i++) {
-            for (int j = 0; j < N; j++) {
+        for (size_t i = 0; i < wavelengths.size(); i++) {
+            for (size_t j = 0; j < N; j++) {
                 reference_data_A[i] += fullSet[i + wavelengths.size() * j];
             }
             reference_data_A[i] *= normFactor;
@@ -351,8 +350,8 @@ public:
         reference_data_B = std::vector<double>(wavelengths.size(), 0.0);
         double normFactor = 1.0 / static_cast<double>(N);
         std::vector<double> fullSet = batchControl.get_data_vector();
-        for (int i = 0; i < wavelengths.size(); i++) {
-            for (int j = 0; j < N; j++) {
+        for (size_t i = 0; i < wavelengths.size(); i++) {
+            for (size_t j = 0; j < N; j++) {
                 reference_data_B[i] +=fullSet[i + j *wavelengths.size()];
             }
             reference_data_B[i] *= normFactor;

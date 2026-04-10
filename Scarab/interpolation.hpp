@@ -80,8 +80,9 @@ constexpr inline double interp_fornberg(const double target_frequency, const std
 inline std::vector<double> wavelength_to_frequency(const std::span<const double> frequencies, const std::span<const double> wavelengths, const std::span<const double> spectrum_in)
 {
     std::vector<double> spectrum_out(frequencies.size());
+    int len = static_cast<int>(frequencies.size());
 #pragma omp parallel for
-    for (int j = 0; j < frequencies.size(); j++) {
+    for (int j = 0; j < len; j++) {
         spectrum_out[j] = interp_fornberg(frequencies[j], frequencies, wavelengths, spectrum_in);
     }
     return spectrum_out;

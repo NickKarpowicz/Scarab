@@ -96,18 +96,14 @@ public:
         int buttonWidth = 4;
         int smallButton = 3;
         int textWidth = 2;
-        int labelWidth = 2;
         int plotWidth = 12;
         int plotHeight = 6;
         int pathChars = 42;
-        int colWidth = labelWidth + 2 * textWidth;
-        int textCol0 = 0;
         int textCol1 = textWidth;
         int textCol2 = 2 * textWidth;
         int textCol3 = 3 * textWidth;
         int textCol4 = 4 * textWidth;
         int textCol5 = 5 * textWidth;
-        int textCol6 = 6 * textWidth;
         int buttonCol1 = 8;
 
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
@@ -250,7 +246,7 @@ public:
         spectrometer_set = std::vector<std::unique_ptr<Spectrometer>>();
         auto ocean_string = open_ocean_spectrometers(spectrometer_set);
         console.cPrint("{}", ocean_string);
-        for(int i = 0; i < spectrometer_set.size(); i++){
+        for(size_t i = 0; i < spectrometer_set.size(); i++){
             console.cPrint("Device {}: {}\n    serial number: {}\n", i, spectrometer_set[i]->name, spectrometer_set[i]->serial_number);
             std::string new_element = std::format("{}: {}, serial: {}", i, spectrometer_set[i]->name, spectrometer_set[i]->serial_number);
             pulldowns[0].addElement(new_element.c_str());
@@ -441,7 +437,7 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 
     int active_spectrometer = theGui.pulldowns[0].getValue();
     if(active_spectrometer < 0) return;
-    if (active_spectrometer != -1 && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
+    if (active_spectrometer != -1 && (active_spectrometer < static_cast<int>(spectrometer_set.size())) && !(*spectrometer_set[active_spectrometer]).initialized()) {
         return;
     }
 
@@ -482,7 +478,7 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
         sPlot.SVGPath = svgPath;
     }
 
-    if (theGui.running_live() && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).checkLock()) {
+    if (theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) && !(*spectrometer_set[active_spectrometer]).checkLock()) {
         (*spectrometer_set[active_spectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         (*spectrometer_set[active_spectrometer]).acquire_single();
     }
@@ -532,7 +528,6 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
     sPlot.markers = false;
     if ((*spectrometer_set[active_spectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
-        int secondAdded = -1;
         sPlot.ExtraLines = (*spectrometer_set[active_spectrometer]).get_overlay_count();
         if ((*spectrometer_set[active_spectrometer]).has_overlay_0) {
             sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay(0);
@@ -557,7 +552,7 @@ void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpo
 void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     int active_spectrometer = theGui.pulldowns[0].getValue();
     if(active_spectrometer < 0) return;
-    if ((active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).initialized()) {
+    if ((active_spectrometer < static_cast<int>(spectrometer_set.size())) && !(*spectrometer_set[active_spectrometer]).initialized()) {
         return;
     }
 
@@ -616,7 +611,7 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
         frequencies[i] = fMin + static_cast<double>(i) * dF;
     }
     std::vector<double> liveSpectrum;
-    if (theGui.running_live() && (active_spectrometer < spectrometer_set.size()) && !(*spectrometer_set[active_spectrometer]).checkLock() && num_freqs > 0) {
+    if (theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) && !(*spectrometer_set[active_spectrometer]).checkLock() && num_freqs > 0) {
         (*spectrometer_set[active_spectrometer]).set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         liveSpectrum = (*spectrometer_set[active_spectrometer]).acquire_single_frequency(frequencies);
     }
@@ -667,7 +662,6 @@ void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int h
     sPlot.markers = false;
     if ((*spectrometer_set[active_spectrometer]).get_overlay_count() > 0) {
         int firstAdded = -1;
-        int secondAdded = -1;
         sPlot.ExtraLines = (*spectrometer_set[active_spectrometer]).get_overlay_count();
         if ((*spectrometer_set[active_spectrometer]).has_overlay_0) {
             sPlot.data2 = (*spectrometer_set[active_spectrometer]).get_overlay_frequency(0, frequencies);
@@ -734,14 +728,14 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
     if (fMax == 0.0) {
         fMax = (*spectrometer_set[0]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
-        for (int i = 1; i < spectrometer_set.size(); i++) {
+        for (size_t i = 1; i < spectrometer_set.size(); i++) {
             fMax = maxN(fMax, 1e-3 * lightC<double>() / (*spectrometer_set[i]).wavelengths()[0]);
         }
     }
     if (fMin == 0.0) {
         fMin = (*spectrometer_set[0]).wavelengths()[(*spectrometer_set[0]).size() - 1];
         fMin = 1e-3 * lightC<double>() / fMin;
-        for (int i = 1; i < spectrometer_set.size(); i++) {
+        for (size_t i = 1; i < spectrometer_set.size(); i++) {
             fMin = minN(fMin, 1e-3 * lightC<double>() / (*spectrometer_set[i]).wavelengths()[(*spectrometer_set[0]).size() - 1]);
         }
     }
@@ -753,7 +747,7 @@ void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int he
     }
     std::vector<std::vector<double>> liveSpectra(spectrometer_set.size());
     if (theGui.running_live() && num_freqs > 0) {
-        for (int i = 0; i < spectrometer_set.size(); i++) {
+        for (size_t i = 0; i < spectrometer_set.size(); i++) {
             liveSpectra[i] = (*spectrometer_set[i]).acquire_single_frequency(frequencies);
         }
     }

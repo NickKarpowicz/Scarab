@@ -30,21 +30,22 @@ public:
         pixel_count(_pixel_count),
         read_buffer(pixel_count),
         read_buffer_minus_dark(pixel_count),
+        wavelengths_buffer(pixel_count),
         overlay0(pixel_count),
         overlay0_minus_dark(pixel_count),
         overlay1(pixel_count),
         overlay1_minus_dark(pixel_count),
         overlay2(pixel_count),
         overlay2_minus_dark(pixel_count),
-        dark_spectrum(pixel_count),
-        wavelengths_buffer(pixel_count){}
+        dark_spectrum(pixel_count)
+        {}
     void subtract_dark(std::vector<double>& dataVector, std::vector<double>& dataMinusDark) {
         if (!has_dark_spectrum) {
             dataMinusDark = dataVector;
             return;
         }
 
-        for (size_t i = 0; i < pixel_count; i++) {
+        for (int i = 0; i < pixel_count; i++) {
             dataMinusDark[i] = dataVector[i] - dark_spectrum[i];
         }
     }
