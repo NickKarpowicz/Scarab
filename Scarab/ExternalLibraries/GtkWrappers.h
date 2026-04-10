@@ -15,7 +15,7 @@ static std::mutex GTKmutex;
 #include <format>
 #include "LightwaveExplorerPlots.h"
 
-class LweGuiElement {
+class GtkGuiElement {
 public:
     GtkWidget* label{};
     GtkWidget* elementHandle{};
@@ -71,7 +71,7 @@ public:
     }
 };
 
-class LweTextBox : public LweGuiElement {
+class GtkTextBox : public GtkGuiElement {
 public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
@@ -196,13 +196,13 @@ public:
 
     void setToDouble(const double in) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Sformat(std::string_view("{:g}"), in);
+        std::string s = std::format(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
@@ -230,7 +230,7 @@ static gboolean scrollTextViewToEndHandler(gpointer data) {
     return false;
 }
 
-class LweConsole : public LweGuiElement {
+class GtkConsole : public GtkGuiElement {
     GtkWidget* consoleText{};
     bool hasNewText{};
     GtkTextBuffer* buf{};
@@ -287,7 +287,7 @@ public:
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         gtk_text_buffer_insert_markup(buf, &stop, s.c_str(), -1);
         GTKlock.unlock();
         scrollToEnd();
@@ -295,7 +295,7 @@ public:
 
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         textBuffer.append(s);
         hasNewText = true;
     }
@@ -372,7 +372,7 @@ public:
     }
 };
 
-class LweButton : public LweGuiElement {
+class GtkPushbutton : public GtkGuiElement {
 public:
     void init(
         const char* buttonName,
@@ -418,7 +418,7 @@ public:
     }
 };
 
-class LweCheckBox : public LweGuiElement {
+class GtkCheck : public GtkGuiElement {
 public:
     void init(
         const char* buttonName,
@@ -442,23 +442,7 @@ public:
     }
 };
 
-class LweProgressBar : public LweGuiElement {
-public:
-    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_progress_bar_new();
-        gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
-        gtk_widget_set_hexpand(elementHandle, true);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
-    }
-    void setValue(double fraction) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(elementHandle), fraction);
-    }
-};
-
-class LwePulldown : public LweGuiElement {
+class GtkPulldown : public GtkGuiElement {
     std::vector<std::string> entryNames;
 public:
     void addElement(const char* newelement) {
@@ -500,7 +484,7 @@ public:
     }
 };
 
-class LweWindow {
+class GtkMainWindow {
     GtkWidget* grid = nullptr;
     GtkWidget* bigGrid = nullptr;
     GtkWidget* consoleGrid = nullptr;
@@ -548,7 +532,7 @@ public:
 
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
         std::string buttonStyle(
-            "label, scale, range, button, entry, textview "
+            "label, scale, button, entry, textview "
             "{ min-height: 17px; min-width: 8px; }");
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker,
@@ -665,7 +649,7 @@ public:
     }
 };
 
-class LweDrawBox : public LweGuiElement {
+class GtkDrawBox : public GtkGuiElement {
 public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
@@ -695,56 +679,9 @@ public:
     }
 };
 
-// class LweSlider : public LweGuiElement {
-//     GtkEventController* eventController{};
-// public:
-//     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
-//         std::unique_lock GTKlock(GTKmutex);
-//         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
-//         gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
-//         gtk_scale_set_value_pos(GTK_SCALE(elementHandle), GTK_POS_LEFT);
-//         gtk_widget_set_hexpand(elementHandle, true);
-//         gtk_widget_set_margin_top(elementHandle, 0);
-//         gtk_widget_set_margin_bottom(elementHandle, 0);
-//         GTKlock.unlock();
-//         setPosition(grid, x, y, width, height);
-
-//     }
-//     int getIntValue() {
-//         std::unique_lock GTKlock(GTKmutex);
-//         return (int)gtk_range_get_value(GTK_RANGE(elementHandle));
-//     }
-//     double getDoubleValue() {
-//         std::unique_lock GTKlock(GTKmutex);
-//         return gtk_range_get_value(GTK_RANGE(elementHandle));
-//     }
-//     void setRange(double minVal, double maxVal) {
-//         std::unique_lock GTKlock(GTKmutex);
-//         gtk_range_set_range(GTK_RANGE(elementHandle), minVal, maxVal);
-//     }
-//     void setDigits(int digits) {
-//         std::unique_lock GTKlock(GTKmutex);
-//         gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
-//     }
-//     void setFunction(auto sliderFunction) {
-//         std::unique_lock GTKlock(GTKmutex);
-//         g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
-
-//     }
-//     void setArrowFunction(auto arrowFunction){
-//         eventController = gtk_event_controller_key_new();
-//         g_signal_connect_object(eventController, "key-pressed", G_CALLBACK(arrowFunction), elementHandle, G_CONNECT_SWAPPED);
-//         gtk_widget_add_controller(GTK_WIDGET(elementHandle), eventController);
-//     }
-//     void setValue(int value) {
-//         std::unique_lock GTKlock(GTKmutex);
-//         gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
-//     }
-// };
-
 
 static void pathFromLoadDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
-    LweTextBox& destinationPathBox = *reinterpret_cast <LweTextBox*>(data);
+    GtkTextBox& destinationPathBox = *reinterpret_cast <GtkTextBox*>(data);
     GError* error = nullptr;
     GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if (error == nullptr) {
@@ -765,7 +702,7 @@ static void pathFromLoadDialogToStringCallback(GObject* gobject, GAsyncResult* r
     }
 }
 
-inline void pathFromLoadDialog(LweTextBox& destinationPathBox) {
+inline void pathFromLoadDialog(GtkTextBox& destinationPathBox) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogCallback, &destinationPathBox);
 }
@@ -775,7 +712,7 @@ inline void pathFromLoadDialog(std::string& destinationPath) {
 }
 
 [[maybe_unused]] static void pathFromSaveDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
-    LweTextBox& destinationPathBox = *reinterpret_cast <LweTextBox*>(data);
+    GtkTextBox& destinationPathBox = *reinterpret_cast <GtkTextBox*>(data);
     GError* error = nullptr;
     GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if (error == nullptr) {
@@ -791,7 +728,7 @@ inline void pathFromLoadDialog(std::string& destinationPath) {
         destinationPath = std::string(g_file_get_path(file));
     }
 }
-inline void pathFromSaveDialog(LweTextBox& destinationPathBox) {
+inline void pathFromSaveDialog(GtkTextBox& destinationPathBox) {
 #ifdef __APPLE__
     NSString* filePath;
     NSSavePanel* savePanel = [NSSavePanel savePanel];

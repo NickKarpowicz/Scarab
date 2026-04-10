@@ -3,6 +3,7 @@
 #include <span>
 #include <cmath>
 #include "ExternalLibraries/LightwaveExplorerHelpers.h"
+
 //c++ port of the Rust code I wrote for the attoworld library
 constexpr std::vector<double> fornberg_stencil(const size_t order, const std::span<const double>& positions, const double position_out){
     size_t n_pos = positions.size();
@@ -54,7 +55,7 @@ constexpr std::vector<double> fornberg_stencil(const size_t order, const std::sp
 constexpr inline double interp_fornberg(const double target_frequency, const std::span<const double> frequencies, const std::span<const double> wavelengths, const std::span<const double> spectrum_in){
     const size_t stencil_width = 4;
     const size_t stencil_offset = stencil_width/2u;
-    const double target_wavelength = constProd(lightC<double>(), 1e-3) / target_frequency;
+    const double target_wavelength = (lightC<double>() * 1e-3) / target_frequency;
     size_t stencil_x_start = std::distance(wavelengths.begin(), std::lower_bound(wavelengths.begin(), wavelengths.end(), target_wavelength));
     if(stencil_x_start < stencil_offset) {
         stencil_x_start = 0;

@@ -1,5 +1,5 @@
 #include <thread>
-#include "ExternalLibraries/LightwaveExplorerGraphicalClasses.h"
+#include "ExternalLibraries/GtkWrappers.h"
 #include "spectrometer.hpp"
 #include "ocean_spectrometer.hpp"
 #include "batch_acquisition.hpp"
@@ -44,14 +44,14 @@ class MainGui {
     bool queue_save_path_update = false;
     bool is_running_live = false;
 public:
-    LweTextBox text_boxes[26];
-    LweButton buttons[19];
-    LweConsole console;
-    LweTextBox file_paths[2];
-    LwePulldown pulldowns[4];
-    LweDrawBox draw_boxes[4];
-    LweCheckBox checkboxes[4];
-    LweWindow window;
+    GtkTextBox text_boxes[26];
+    GtkPushbutton buttons[19];
+    GtkConsole console;
+    GtkTextBox file_paths[2];
+    GtkPulldown pulldowns[4];
+    GtkDrawBox draw_boxes[4];
+    GtkCheck checkboxes[4];
+    GtkMainWindow window;
     std::string path_buffer;
     int saveSVG = 0;
     bool loadedDefaults = false;
