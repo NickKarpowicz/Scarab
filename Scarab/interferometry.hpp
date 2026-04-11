@@ -316,10 +316,10 @@ class SpectralInterferometry {
     }
 
     void acquire_reference_b(BatchAcquisition &batch_control,
-                           const size_t n,
-                           const double integration_time,
-                           const double seconds_to_wait,
-                           Spectrometer &s) {
+                             const size_t n,
+                             const double integration_time,
+                             const double seconds_to_wait,
+                             Spectrometer &s) {
         if(n == 0)
             return;
         batch_control.acquire_batch(n, integration_time, seconds_to_wait, s);

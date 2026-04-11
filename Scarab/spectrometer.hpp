@@ -92,23 +92,23 @@ class Spectrometer {
             case 0:
                 if(has_dark_spectrum)
                     overlay0_f = wavelength_to_frequency(frequencies,
-                                                        wavelengths_buffer,
-                                                        overlay0_minus_dark);
+                                                         wavelengths_buffer,
+                                                         overlay0_minus_dark);
                 else
                     overlay0_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0);
                 return overlay0_f.data();
             case 1:
                 if(has_dark_spectrum)
                     overlay1_f = wavelength_to_frequency(frequencies,
-                                                        wavelengths_buffer,
-                                                        overlay1_minus_dark);
+                                                         wavelengths_buffer,
+                                                         overlay1_minus_dark);
                 overlay1_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1);
                 return overlay1_f.data();
             case 2:
                 if(has_dark_spectrum)
                     overlay2_f = wavelength_to_frequency(frequencies,
-                                                        wavelengths_buffer,
-                                                        overlay2_minus_dark);
+                                                         wavelengths_buffer,
+                                                         overlay2_minus_dark);
                 overlay2_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2);
                 return overlay2_f.data();
             default:
@@ -143,8 +143,8 @@ class Spectrometer {
             output_buffer.insert(output_buffer.end(), read_buffer.begin(), read_buffer.end());
         } else {
             output_buffer.insert(output_buffer.end(),
-                                read_buffer_minus_dark.begin(),
-                                read_buffer_minus_dark.end());
+                                 read_buffer_minus_dark.begin(),
+                                 read_buffer_minus_dark.end());
         }
     }
 

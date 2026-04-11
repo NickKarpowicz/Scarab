@@ -26,31 +26,37 @@ class GtkGuiElement {
     bool is_attached = false;
     GtkWidget *grid = nullptr;
 
-    void set_position(GtkWidget *grid, const int x, const int y, const int width, const int height) {
+    void
+    set_position(GtkWidget *grid, const int x, const int y, const int width, const int height) {
         std::unique_lock gtk_lock(gt_kmutex);
-        if(grid && gtk_widget_get_parent(element_handle)==GTK_WIDGET(grid))
+        if(grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(grid))
             gtk_grid_remove(GTK_GRID(grid), element_handle);
         grid = grid;
         m_x = x;
         m_y = y;
         m_width = width;
         m_height = height;
-        if(GTK_IS_GRID(grid)) gtk_grid_attach(GTK_GRID(grid), element_handle, m_x, m_y, m_width, m_height);
+        if(GTK_IS_GRID(grid))
+            gtk_grid_attach(GTK_GRID(grid), element_handle, m_x, m_y, m_width, m_height);
     }
-    void remove() { if(grid && gtk_widget_get_parent(element_handle)==GTK_WIDGET(grid)) gtk_grid_remove(GTK_GRID(grid), element_handle); }
+    void remove() {
+        if(grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(grid))
+            gtk_grid_remove(GTK_GRID(grid), element_handle);
+    }
     void set_label(const int x, const int y, const char *label_text) {
         std::unique_lock gtk_lock(gt_kmutex);
         label = gtk_label_new(label_text);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), 45);
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        if(GTK_IS_GRID(grid)) gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, 6, 1);
+        if(GTK_IS_GRID(grid))
+            gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, 6, 1);
     }
     void set_label(const int x,
-                  const int y,
-                  const char *label_text,
-                  const int characters,
-                  const int grids) {
+                   const int y,
+                   const char *label_text,
+                   const int characters,
+                   const int grids) {
         std::unique_lock gtk_lock(gt_kmutex);
         label = gtk_label_new(label_text);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
@@ -297,7 +303,10 @@ class GtkConsole : public GtkGuiElement {
     }
     void scroll_to_end() {
         std::unique_lock gtk_lock(gt_kmutex);
-        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scroll_text_view_to_end_handler, element_handle, NULL);
+        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+                        scroll_text_view_to_end_handler,
+                        element_handle,
+                        NULL);
     }
     void update_from_buffer() {
         if(has_new_text) {
@@ -492,8 +501,8 @@ class GtkMainWindow {
 // override style more aggressively if it will be Adwaita
 #if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
         std::string style_string("label, scale { font-family: Arial; font-weight: bold; }\n "
-                                "button, entry, textview { font-family: Arial; font-weight: bold; "
-                                "color: #FFFFFF; background-color: #151515; }");
+                                 "button, entry, textview { font-family: Arial; font-weight: bold; "
+                                 "color: #FFFFFF; background-color: #151515; }");
 #else
         std::string style_string(
             "label, scale { font-family: Arial; font-weight: bold; }\n "
@@ -511,7 +520,7 @@ class GtkMainWindow {
 
         GtkCssProvider *button_shrinker = gtk_css_provider_new();
         std::string button_style("label, scale, button, entry, textview "
-                                "{ min-height: 17px; min-width: 8px; }");
+                                 "{ min-height: 17px; min-width: 8px; }");
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker, buttonStyle.c_str(), -1);
 #else
@@ -675,7 +684,11 @@ inline void path_from_load_dialog(GtkTextBox &destination_path_box) {
 }
 inline void path_from_load_dialog(std::string &destination_path) {
     GtkFileDialog *dialog = gtk_file_dialog_new();
-    gtk_file_dialog_open(dialog, NULL, NULL, path_from_load_dialog_to_string_callback, &destination_path);
+    gtk_file_dialog_open(dialog,
+                         NULL,
+                         NULL,
+                         path_from_load_dialog_to_string_callback,
+                         &destination_path);
 }
 
 [[maybe_unused]] static void
@@ -736,8 +749,8 @@ std::string pathFromAppleSaveDialog() {
 }
 #endif
 inline void path_from_save_dialog(std::string &destination_path,
-                               const std::string &suffix,
-                               const std::string &filetype_name) {
+                                  const std::string &suffix,
+                                  const std::string &filetype_name) {
 #ifdef __APPLE__
     NSString *filePath;
     NSSavePanel *savePanel = [NSSavePanel savePanel];
@@ -760,7 +773,11 @@ inline void path_from_save_dialog(std::string &destination_path,
     g_list_store_append(filters, filter);
 
     gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
-    gtk_file_dialog_save(dialog, NULL, NULL, path_from_save_dialog_string_callback, &destination_path);
+    gtk_file_dialog_save(dialog,
+                         NULL,
+                         NULL,
+                         path_from_save_dialog_string_callback,
+                         &destination_path);
 #endif
 }
 
