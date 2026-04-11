@@ -491,7 +491,7 @@ class GtkMainWindow {
         GtkCssProvider *text_provider = gtk_css_provider_new();
 // override style more aggressively if it will be Adwaita
 #if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
-        std::string styleString("label, scale { font-family: Arial; font-weight: bold; }\n "
+        std::string style_string("label, scale { font-family: Arial; font-weight: bold; }\n "
                                 "button, entry, textview { font-family: Arial; font-weight: bold; "
                                 "color: #FFFFFF; background-color: #151515; }");
 #else
@@ -501,7 +501,7 @@ class GtkMainWindow {
 #endif
 
 #if defined __APPLE__
-        gtk_css_provider_load_from_data(textProvider, styleString.c_str(), -1);
+        gtk_css_provider_load_from_data(text_provider, style_string.c_str(), -1);
 #else
         gtk_css_provider_load_from_string(text_provider, style_string.c_str());
 #endif
