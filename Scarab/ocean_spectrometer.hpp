@@ -34,8 +34,8 @@ class OceanSpectrometer : public Spectrometer {
     }
     virtual ~OceanSpectrometer() override { odapi_close_device(device_id, &error); }
 
-    void set_integration_time(unsigned long integration_timeMicroseconds) override {
-        odapi_set_integration_time_micros(device_id, &error, integration_timeMicroseconds);
+    void set_integration_time(unsigned long integration_time_microseconds) override {
+        odapi_set_integration_time_micros(device_id, &error, integration_time_microseconds);
     }
 
     void acquire_single() override {
@@ -49,8 +49,8 @@ class OceanSpectrometer : public Spectrometer {
         return wavelength_to_frequency(frequencies, wavelengths_buffer, read_buffer_minus_dark);
     }
 
-    void acquire_overlay(int overlayIndex) override {
-        switch(overlayIndex) {
+    void acquire_overlay(int overlay_index) override {
+        switch(overlay_index) {
             case 0:
                 odapi_get_formatted_spectrum(device_id, &error, overlay0.data(), pixel_count);
                 subtract_dark(overlay0, overlay0_minus_dark);

@@ -136,9 +136,9 @@ class MainGui {
                         1,
                         handle_delete_dark_spectrum);
 
-        buttons[9].init(("Ref. A"), parentHandle, 0, 11, smallButton, 1, handle_reference_A);
+        buttons[9].init(("Ref. A"), parentHandle, 0, 11, smallButton, 1, handle_reference_a);
         buttons[10]
-            .init(("Ref. B"), parentHandle, smallButton, 11, smallButton, 1, handle_reference_B);
+            .init(("Ref. B"), parentHandle, smallButton, 11, smallButton, 1, handle_reference_b);
         buttons[11]
             .init(("Reset"), parentHandle, smallButton * 2, 11, smallButton, 1, handle_reset_phase);
         buttons[12]
@@ -376,7 +376,7 @@ void acquisition_thread(int active_spectrometer,
 void handle_save() {
     theGui.stop_live();
     int active_spectrometer = theGui.pulldowns[0].getValue();
-    if((*spectrometer_set[active_spectrometer]).checkLock())
+    if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
     std::string path;
     theGui.file_paths[0].copyBuffer(path);
@@ -401,29 +401,29 @@ void handle_save_phase() {
     the_interference_controller.save(path, timestamp);
 }
 
-void reference_A_acquisition_thread(int active_spectrometer,
+void reference_a_acquisition_thread(int active_spectrometer,
                                     size_t N,
                                     double integration_time,
                                     double seconds_to_wait) {
-    the_interference_controller.acquire_reference_A(theBatch,
+    the_interference_controller.acquire_reference_a(theBatch,
                                                     N,
                                                     integration_time,
                                                     seconds_to_wait,
                                                     (*spectrometer_set[active_spectrometer]));
 }
 
-void reference_B_acquisition_thread(int active_spectrometer,
+void reference_b_acquisition_thread(int active_spectrometer,
                                     size_t N,
                                     double integration_time,
                                     double seconds_to_wait) {
-    the_interference_controller.acquireReferenceB(theBatch,
+    the_interference_controller.acquire_reference_b(theBatch,
                                                   N,
                                                   integration_time,
                                                   seconds_to_wait,
                                                   (*spectrometer_set[active_spectrometer]));
 }
 
-void handle_reference_A() {
+void handle_reference_a() {
     handle_reset_controller();
     if(!the_interference_controller.check_configuration_status()) {
         theGui.console.cPrint("Reset controller with frequencies first.\n");
@@ -431,16 +431,16 @@ void handle_reference_A() {
     }
     theGui.stop_live();
     int active_spectrometer = theGui.pulldowns[0].getValue();
-    if((*spectrometer_set[active_spectrometer]).checkLock())
+    if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
     size_t N = (size_t)theGui.text_boxes[14].valueDouble();
     double integration_time = theGui.text_boxes[0].valueDouble();
     double waitTime = theGui.text_boxes[13].valueDouble();
-    std::thread(reference_A_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
+    std::thread(reference_a_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
         .detach();
 }
 
-void handle_reference_B() {
+void handle_reference_b() {
     handle_reset_controller();
     if(!the_interference_controller.check_configuration_status()) {
         theGui.console.cPrint("Reset controller with frequencies first.\n");
@@ -448,12 +448,12 @@ void handle_reference_B() {
     }
     theGui.stop_live();
     int active_spectrometer = theGui.pulldowns[0].getValue();
-    if((*spectrometer_set[active_spectrometer]).checkLock())
+    if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
     size_t N = (size_t)theGui.text_boxes[14].valueDouble();
     double integration_time = theGui.text_boxes[0].valueDouble();
     double waitTime = theGui.text_boxes[13].valueDouble();
-    std::thread(reference_B_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
+    std::thread(reference_b_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
         .detach();
 }
 
@@ -550,7 +550,7 @@ void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
     }
 
     if(theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) &&
-       !(*spectrometer_set[active_spectrometer]).checkLock()) {
+       !(*spectrometer_set[active_spectrometer]).check_lock()) {
         (*spectrometer_set[active_spectrometer])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         (*spectrometer_set[active_spectrometer]).acquire_single();
@@ -713,7 +713,7 @@ void draw_spectrum_frequency(GtkDrawingArea *area,
     }
     std::vector<double> liveSpectrum;
     if(theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) &&
-       !(*spectrometer_set[active_spectrometer]).checkLock() && num_freqs > 0) {
+       !(*spectrometer_set[active_spectrometer]).check_lock() && num_freqs > 0) {
         (*spectrometer_set[active_spectrometer])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         liveSpectrum =
@@ -1040,7 +1040,7 @@ void draw_interference_spectrum(GtkDrawingArea *area,
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
         (*spectrometer_set[theGui.pulldowns[0].getValue()])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
@@ -1072,13 +1072,13 @@ void draw_interference_spectrum(GtkDrawingArea *area,
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
     sPlot.ExtraLines = 0;
-    if(the_interference_controller.get_reference_A_vector().size() ==
+    if(the_interference_controller.get_reference_a_vector().size() ==
        the_interference_controller.get_num_freqs()) {
-        sPlot.data2 = the_interference_controller.get_reference_A();
+        sPlot.data2 = the_interference_controller.get_reference_a();
         sPlot.ExtraLines = 1;
-        if(the_interference_controller.get_reference_B_vector().size() ==
+        if(the_interference_controller.get_reference_b_vector().size() ==
            the_interference_controller.get_num_freqs()) {
-            sPlot.data3 = the_interference_controller.get_reference_B();
+            sPlot.data3 = the_interference_controller.get_reference_b();
             sPlot.ExtraLines = 2;
         }
     }
@@ -1162,7 +1162,7 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
     double t0 = theGui.text_boxes[18].valueDouble();
     double sigma = theGui.text_boxes[19].valueDouble();
     double ord = theGui.text_boxes[20].valueDouble();
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
         (*spectrometer_set[theGui.pulldowns[0].getValue()])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
@@ -1196,8 +1196,8 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     sPlot.markers = false;
-    sPlot.data2 = the_interference_controller.get_time_reference_A();
-    sPlot.data3 = the_interference_controller.get_time_reference_B();
+    sPlot.data2 = the_interference_controller.get_time_reference_a();
+    sPlot.data3 = the_interference_controller.get_time_reference_b();
     sPlot.data4 = the_interference_controller.get_time_filter();
     sPlot.ExtraLines = 3;
     sPlot.plot(cr);
@@ -1278,7 +1278,7 @@ void draw_interference_phase(GtkDrawingArea *area,
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
         (*spectrometer_set[theGui.pulldowns[0].getValue()])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
@@ -1389,7 +1389,7 @@ void draw_interference_group_delay(GtkDrawingArea *area,
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).checkLock()) {
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
         (*spectrometer_set[theGui.pulldowns[0].getValue()])
             .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
         the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());

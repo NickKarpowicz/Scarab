@@ -18,21 +18,21 @@ class BatchAcquisition {
     size_t acquisition_count = 0;
 
   public:
-    void acquire_batch(const size_t N,
+    void acquire_batch(const size_t n,
                        const double integration_time,
                        const double seconds_to_wait,
                        Spectrometer &s) {
-        if(N == 0)
+        if(n == 0)
             return;
         s.lock();
         spectrum_size = s.size();
         wavelengths = s.wavelengths_copy();
         data.clear();
-        data.reserve(N * spectrum_size);
+        data.reserve(n * spectrum_size);
         acquisition_count = 0;
         acquisition_finished = false;
         s.set_integration_time((unsigned long)round(1000 * integration_time));
-        for(size_t i = 0; i < N; i++) {
+        for(size_t i = 0; i < n; i++) {
             s.acquire_single();
             s.append_buffer_to(data);
             acquisition_count++;
@@ -55,12 +55,12 @@ class BatchAcquisition {
             auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                                  std::chrono::system_clock::now().time_since_epoch())
                                  .count();
-            size_t lastPeriod = path.find_last_of(".");
+            size_t last_period = path.find_last_of(".");
             // if the extension is weird or absent, just put timestamp at end
-            if(lastPeriod == std::string::npos || (path.length() - lastPeriod) > 6) {
+            if(last_period == std::string::npos || (path.length() - last_period) > 6) {
                 path.append(std::format("{}", timestamp));
             } else {
-                path.insert(lastPeriod, std::format("{}", timestamp));
+                path.insert(last_period, std::format("{}", timestamp));
             }
         }
         std::ofstream fs(path, std::ios::binary);

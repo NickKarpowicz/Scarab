@@ -18,27 +18,27 @@ class Spectrometer {
     std::vector<double> overlay1_minus_dark;
     std::vector<double> overlay2;
     std::vector<double> overlay2_minus_dark;
-    std::vector<double> overlay0F;
-    std::vector<double> overlay1F;
-    std::vector<double> overlay2F;
+    std::vector<double> overlay0_f;
+    std::vector<double> overlay1_f;
+    std::vector<double> overlay2_f;
     std::vector<double> dark_spectrum;
     bool has_dark_spectrum = false;
     int last_overlay = -1;
     bool is_initialized = false;
     bool is_locked = false;
-    Spectrometer(int _pixel_count)
-        : pixel_count(_pixel_count), read_buffer(pixel_count), read_buffer_minus_dark(pixel_count),
+    Spectrometer(int pixel_count)
+        : pixel_count(pixel_count), read_buffer(pixel_count), read_buffer_minus_dark(pixel_count),
           wavelengths_buffer(pixel_count), overlay0(pixel_count), overlay0_minus_dark(pixel_count),
           overlay1(pixel_count), overlay1_minus_dark(pixel_count), overlay2(pixel_count),
           overlay2_minus_dark(pixel_count), dark_spectrum(pixel_count) {}
-    void subtract_dark(std::vector<double> &dataVector, std::vector<double> &dataMinusDark) {
+    void subtract_dark(std::vector<double> &data_vector, std::vector<double> &data_minus_dark) {
         if(!has_dark_spectrum) {
-            dataMinusDark = dataVector;
+            data_minus_dark = data_vector;
             return;
         }
 
         for(int i = 0; i < pixel_count; i++) {
-            dataMinusDark[i] = dataVector[i] - dark_spectrum[i];
+            data_minus_dark[i] = data_vector[i] - dark_spectrum[i];
         }
     }
 
@@ -46,30 +46,30 @@ class Spectrometer {
     bool has_overlay_1 = false;
     bool has_overlay_2 = false;
     virtual ~Spectrometer() {}
-    virtual void set_integration_time(unsigned long integration_timeMicroseconds) = 0;
+    virtual void set_integration_time(unsigned long integration_time_microseconds) = 0;
     virtual void acquire_single() = 0;
     virtual std::vector<double>
     acquire_single_frequency(const std::vector<double> &frequencies) = 0;
-    virtual void acquire_overlay(int overlayIndex) = 0;
+    virtual void acquire_overlay(int overlay_index) = 0;
     virtual void acquire_dark_spectrum() = 0;
 
     bool initialized() { return is_initialized; }
     void lock() { is_locked = true; }
     void unlock() { is_locked = false; }
-    bool checkLock() { return is_locked; }
+    bool check_lock() { return is_locked; }
     void disable_dark_spectrum() { has_dark_spectrum = false; }
     int get_overlay_count() {
-        int overlayCount = 0;
+        int overlay_count = 0;
         if(has_overlay_0)
-            overlayCount++;
+            overlay_count++;
         if(has_overlay_1)
-            overlayCount++;
+            overlay_count++;
         if(has_overlay_2)
-            overlayCount++;
-        return overlayCount;
+            overlay_count++;
+        return overlay_count;
     }
-    double *get_overlay(int overlayIndex) {
-        switch(overlayIndex) {
+    double *get_overlay(int overlay_index) {
+        switch(overlay_index) {
             case 0:
                 if(has_dark_spectrum)
                     return overlay0_minus_dark.data();
@@ -87,37 +87,37 @@ class Spectrometer {
         }
     }
 
-    double *get_overlay_frequency(int overlayIndex, const std::vector<double> frequencies) {
-        switch(overlayIndex) {
+    double *get_overlay_frequency(int overlay_index, const std::vector<double> frequencies) {
+        switch(overlay_index) {
             case 0:
                 if(has_dark_spectrum)
-                    overlay0F = wavelength_to_frequency(frequencies,
+                    overlay0_f = wavelength_to_frequency(frequencies,
                                                         wavelengths_buffer,
                                                         overlay0_minus_dark);
                 else
-                    overlay0F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0);
-                return overlay0F.data();
+                    overlay0_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay0);
+                return overlay0_f.data();
             case 1:
                 if(has_dark_spectrum)
-                    overlay1F = wavelength_to_frequency(frequencies,
+                    overlay1_f = wavelength_to_frequency(frequencies,
                                                         wavelengths_buffer,
                                                         overlay1_minus_dark);
-                overlay1F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1);
-                return overlay1F.data();
+                overlay1_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay1);
+                return overlay1_f.data();
             case 2:
                 if(has_dark_spectrum)
-                    overlay2F = wavelength_to_frequency(frequencies,
+                    overlay2_f = wavelength_to_frequency(frequencies,
                                                         wavelengths_buffer,
                                                         overlay2_minus_dark);
-                overlay2F = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2);
-                return overlay2F.data();
+                overlay2_f = wavelength_to_frequency(frequencies, wavelengths_buffer, overlay2);
+                return overlay2_f.data();
             default:
                 return nullptr;
         }
     }
 
-    void delete_overlay(int overlayIndex) {
-        switch(overlayIndex) {
+    void delete_overlay(int overlay_index) {
+        switch(overlay_index) {
             case 0:
                 has_overlay_0 = false;
                 break;
@@ -138,11 +138,11 @@ class Spectrometer {
         }
     }
 
-    void append_buffer_to(std::vector<double> &outputBuffer) {
+    void append_buffer_to(std::vector<double> &output_buffer) {
         if(!has_dark_spectrum) {
-            outputBuffer.insert(outputBuffer.end(), read_buffer.begin(), read_buffer.end());
+            output_buffer.insert(output_buffer.end(), read_buffer.begin(), read_buffer.end());
         } else {
-            outputBuffer.insert(outputBuffer.end(),
+            output_buffer.insert(output_buffer.end(),
                                 read_buffer_minus_dark.begin(),
                                 read_buffer_minus_dark.end());
         }
