@@ -40,13 +40,13 @@ class MainGui {
     void apply_update() {
         if(queue_update) {
             queue_update = false;
-            draw_boxes[0].queueDraw();
+            draw_boxes[0].queue_draw();
         }
         if(queue_save_path_update && path_buffer != "?LWE_LOADING??") {
             queue_save_path_update = false;
             if(path_buffer == "?LWE_NOPATH??")
                 return;
-            file_paths[0].overwritePrint(path_buffer);
+            file_paths[0].overwrite_print(path_buffer);
         }
     }
 
@@ -54,7 +54,7 @@ class MainGui {
     void requestSavePathUpdate() {
 #ifndef __APPLE__
         path_buffer = std::string("?LWE_LOADING??");
-        pathFromSaveDialog(path_buffer, "txt", "Text (.txt)");
+        path_from_save_dialog(path_buffer, "txt", "Text (.txt)");
 #endif
         queue_save_path_update = true;
     }
@@ -74,192 +74,192 @@ class MainGui {
 
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         window.init(app, "Spectrometer Control and Recording for Attosecond Beamlines", 1400, 800);
-        GtkWidget *parentHandle = window.parentHandle();
+        GtkWidget *parent_handle = window.parent_handle();
 
-        buttons[0].init(("Run"), parentHandle, buttonCol1, 1, buttonWidth, 1, handle_run_button);
+        buttons[0].init(("Run"), parent_handle, buttonCol1, 1, buttonWidth, 1, handle_run_button);
         buttons[1].init(("\xf0\x9f\x93\x88"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1,
                         3,
                         buttonWidth / 2,
                         1,
                         handle_get_overlay0);
         buttons[2].init(("\xf0\x9f\x93\x88"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1,
                         4,
                         buttonWidth / 2,
                         1,
                         handle_get_overlay1);
         buttons[3].init(("\xf0\x9f\x93\x88"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1,
                         5,
                         buttonWidth / 2,
                         1,
                         handle_get_overlay2);
-        buttons[18].init(("Acquire"), parentHandle, buttonCol1, 7, buttonWidth, 1, handle_save);
+        buttons[18].init(("Acquire"), parent_handle, buttonCol1, 7, buttonWidth, 1, handle_save);
 
         buttons[4].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1 + buttonWidth / 2,
                         3,
                         buttonWidth / 2,
                         1,
                         handle_delete_overlay0);
         buttons[5].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1 + buttonWidth / 2,
                         4,
                         buttonWidth / 2,
                         1,
                         handle_delete_overlay1);
         buttons[6].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1 + buttonWidth / 2,
                         5,
                         buttonWidth / 2,
                         1,
                         handle_delete_overlay2);
         buttons[7].init(("\xf0\x9f\x95\xaf\xef\xb8\x8f"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1,
                         2,
                         buttonWidth / 2,
                         1,
                         handle_get_dark_spectrum);
         buttons[8].init(("\xf0\x9f\x97\x91\xef\xb8\x8f"),
-                        parentHandle,
+                        parent_handle,
                         buttonCol1 + buttonWidth / 2,
                         2,
                         buttonWidth / 2,
                         1,
                         handle_delete_dark_spectrum);
 
-        buttons[9].init(("Ref. A"), parentHandle, 0, 11, smallButton, 1, handle_reference_a);
+        buttons[9].init(("Ref. A"), parent_handle, 0, 11, smallButton, 1, handle_reference_a);
         buttons[10]
-            .init(("Ref. B"), parentHandle, smallButton, 11, smallButton, 1, handle_reference_b);
+            .init(("Ref. B"), parent_handle, smallButton, 11, smallButton, 1, handle_reference_b);
         buttons[11]
-            .init(("Reset"), parentHandle, smallButton * 2, 11, smallButton, 1, handle_reset_phase);
+            .init(("Reset"), parent_handle, smallButton * 2, 11, smallButton, 1, handle_reset_phase);
         buttons[12]
-            .init(("Save"), parentHandle, smallButton * 3, 11, smallButton, 1, handle_save_phase);
+            .init(("Save"), parent_handle, smallButton * 3, 11, smallButton, 1, handle_save_phase);
 
         // RGB active
-        text_boxes[1].init(parentHandle, textCol1, 2, textWidth, 1);
-        text_boxes[2].init(parentHandle, textCol2, 2, textWidth, 1);
-        text_boxes[3].init(parentHandle, textCol3, 2, textWidth, 1);
+        text_boxes[1].init(parent_handle, textCol1, 2, textWidth, 1);
+        text_boxes[2].init(parent_handle, textCol2, 2, textWidth, 1);
+        text_boxes[3].init(parent_handle, textCol3, 2, textWidth, 1);
 
         // RGB overlay0
-        text_boxes[4].init(parentHandle, textCol1, 3, textWidth, 1);
-        text_boxes[5].init(parentHandle, textCol2, 3, textWidth, 1);
-        text_boxes[6].init(parentHandle, textCol3, 3, textWidth, 1);
+        text_boxes[4].init(parent_handle, textCol1, 3, textWidth, 1);
+        text_boxes[5].init(parent_handle, textCol2, 3, textWidth, 1);
+        text_boxes[6].init(parent_handle, textCol3, 3, textWidth, 1);
 
         // RGB overlay1
-        text_boxes[7].init(parentHandle, textCol1, 4, textWidth, 1);
-        text_boxes[8].init(parentHandle, textCol2, 4, textWidth, 1);
-        text_boxes[9].init(parentHandle, textCol3, 4, textWidth, 1);
+        text_boxes[7].init(parent_handle, textCol1, 4, textWidth, 1);
+        text_boxes[8].init(parent_handle, textCol2, 4, textWidth, 1);
+        text_boxes[9].init(parent_handle, textCol3, 4, textWidth, 1);
 
         // RGB overlay2
-        text_boxes[10].init(parentHandle, textCol1, 5, textWidth, 1);
-        text_boxes[11].init(parentHandle, textCol2, 5, textWidth, 1);
-        text_boxes[12].init(parentHandle, textCol3, 5, textWidth, 1);
+        text_boxes[10].init(parent_handle, textCol1, 5, textWidth, 1);
+        text_boxes[11].init(parent_handle, textCol2, 5, textWidth, 1);
+        text_boxes[12].init(parent_handle, textCol3, 5, textWidth, 1);
 
-        text_boxes[0].init(parentHandle, textCol3, 7, textWidth, 1);
-        text_boxes[0].setLabel(-3 * textWidth, 0, "Exposure (ms)");
-        text_boxes[0].overwritePrint(std::string("40"));
+        text_boxes[0].init(parent_handle, textCol3, 7, textWidth, 1);
+        text_boxes[0].set_label(-3 * textWidth, 0, "Exposure (ms)");
+        text_boxes[0].overwrite_print(std::string("40"));
 
-        text_boxes[13].init(parentHandle, textCol3, 8, textWidth, 1);
-        text_boxes[13].setLabel(-3 * textWidth, 0, "Pause, count (s, #)");
-        text_boxes[14].init(parentHandle, textCol4, 8, textWidth, 1);
-        text_boxes[13].overwritePrint(std::string("0"));
-        text_boxes[14].overwritePrint(std::string("10"));
+        text_boxes[13].init(parent_handle, textCol3, 8, textWidth, 1);
+        text_boxes[13].set_label(-3 * textWidth, 0, "Pause, count (s, #)");
+        text_boxes[14].init(parent_handle, textCol4, 8, textWidth, 1);
+        text_boxes[13].overwrite_print(std::string("0"));
+        text_boxes[14].overwrite_print(std::string("10"));
 
-        text_boxes[15].init(parentHandle, textCol3, 9, 2, 1);
-        text_boxes[15].setMaxCharacters(6);
-        text_boxes[16].init(parentHandle, textCol4, 9, 2, 1);
-        text_boxes[16].setMaxCharacters(6);
-        text_boxes[17].init(parentHandle, textCol5, 9, 2, 1);
-        text_boxes[17].setMaxCharacters(6);
-        text_boxes[15].setLabel(-3 * textWidth, 0, "Freqs. (#, min,max)");
-        text_boxes[15].overwritePrint(std::string("2048"));
+        text_boxes[15].init(parent_handle, textCol3, 9, 2, 1);
+        text_boxes[15].set_max_characters(6);
+        text_boxes[16].init(parent_handle, textCol4, 9, 2, 1);
+        text_boxes[16].set_max_characters(6);
+        text_boxes[17].init(parent_handle, textCol5, 9, 2, 1);
+        text_boxes[17].set_max_characters(6);
+        text_boxes[15].set_label(-3 * textWidth, 0, "Freqs. (#, min,max)");
+        text_boxes[15].overwrite_print(std::string("2048"));
 
-        text_boxes[18].init(parentHandle, textCol3, 10, 2, 1);
-        text_boxes[18].setMaxCharacters(6);
-        text_boxes[19].init(parentHandle, textCol4, 10, 2, 1);
-        text_boxes[19].setMaxCharacters(6);
-        text_boxes[20].init(parentHandle, textCol5, 10, 2, 1);
-        text_boxes[20].setMaxCharacters(6);
-        text_boxes[18].setLabel(-3 * textWidth, 0, "Filter (t0, sig., ord.)");
-        text_boxes[18].overwritePrint(std::string("300"));
-        text_boxes[19].overwritePrint(std::string("80"));
-        text_boxes[20].overwritePrint(std::string("12"));
+        text_boxes[18].init(parent_handle, textCol3, 10, 2, 1);
+        text_boxes[18].set_max_characters(6);
+        text_boxes[19].init(parent_handle, textCol4, 10, 2, 1);
+        text_boxes[19].set_max_characters(6);
+        text_boxes[20].init(parent_handle, textCol5, 10, 2, 1);
+        text_boxes[20].set_max_characters(6);
+        text_boxes[18].set_label(-3 * textWidth, 0, "Filter (t0, sig., ord.)");
+        text_boxes[18].overwrite_print(std::string("300"));
+        text_boxes[19].overwrite_print(std::string("80"));
+        text_boxes[20].overwrite_print(std::string("12"));
 
-        file_paths[0].init(parentHandle, 0, 6, 10, 1);
-        file_paths[0].setMaxCharacters(pathChars);
-        file_paths[0].overwritePrint(std::format("DefaultOutput.txt"));
-        checkboxes[2].init("\xe2\x8c\x9a", parentHandle, buttonCol1 + buttonWidth / 2, 8, 2, 1);
+        file_paths[0].init(parent_handle, 0, 6, 10, 1);
+        file_paths[0].set_max_characters(pathChars);
+        file_paths[0].overwrite_print(std::format("DefaultOutput.txt"));
+        checkboxes[2].init("\xe2\x8c\x9a", parent_handle, buttonCol1 + buttonWidth / 2, 8, 2, 1);
         buttons[17].init(("..."),
-                         parentHandle,
+                         parent_handle,
                          buttonCol1 + buttonWidth / 2,
                          6,
                          buttonWidth / 2,
                          1,
                          save_path_callback,
                          0);
-        text_boxes[22].init(window.parentHandle(4), 3, 0, 2, 1);
-        text_boxes[23].init(window.parentHandle(4), 5, 0, 2, 1);
-        text_boxes[24].init(window.parentHandle(4), 9, 0, 2, 1);
-        text_boxes[25].init(window.parentHandle(4), 11, 0, 2, 1);
-        draw_boxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
-        draw_boxes[0].setDrawingFunction(draw_spectrum);
-        checkboxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
-        checkboxes[3].init(("Average phase"), window.parentHandle(4), 15, 0, 1, 1);
-        buttons[13].init(("xlim"), window.parentHandle(4), 2, 0, 1, 1, handle_refresh_request);
-        buttons[13].setTooltip("Apply the entered x limits to the plot. The two text boxes are for "
+        text_boxes[22].init(window.parent_handle(4), 3, 0, 2, 1);
+        text_boxes[23].init(window.parent_handle(4), 5, 0, 2, 1);
+        text_boxes[24].init(window.parent_handle(4), 9, 0, 2, 1);
+        text_boxes[25].init(window.parent_handle(4), 11, 0, 2, 1);
+        draw_boxes[0].init(window.parent_handle(2), 0, 0, plotWidth, plotHeight);
+        draw_boxes[0].set_drawing_function(draw_spectrum);
+        checkboxes[1].init(("Log"), window.parent_handle(4), 13, 0, 1, 1);
+        checkboxes[3].init(("Average phase"), window.parent_handle(4), 15, 0, 1, 1);
+        buttons[13].init(("xlim"), window.parent_handle(4), 2, 0, 1, 1, handle_refresh_request);
+        buttons[13].set_tooltip("Apply the entered x limits to the plot. The two text boxes are for "
                                "the upper and lower limits applied to the frequency axis. If they "
                                "are empty, the range will include the whole grid.");
-        buttons[14].init(("ylim"), window.parentHandle(4), 7, 0, 1, 1, handle_refresh_request);
-        buttons[14].setTooltip("Apply the entered y limits to the plot. The two text boxes are for "
+        buttons[14].init(("ylim"), window.parent_handle(4), 7, 0, 1, 1, handle_refresh_request);
+        buttons[14].set_tooltip("Apply the entered y limits to the plot. The two text boxes are for "
                                "the upper and lower limits applied to the frequency axis. If they "
                                "are empty, the range will include the whole grid.");
-        buttons[15].init(("SVG"), window.parentHandle(4), 1, 0, 1, 1, svg_callback);
-        buttons[15].setTooltip("Generate SVG files of the four line plots, with filenames based on "
+        buttons[15].init(("SVG"), window.parent_handle(4), 1, 0, 1, 1, svg_callback);
+        buttons[15].set_tooltip("Generate SVG files of the four line plots, with filenames based on "
                                "the base path set above");
         buttons[16].init("\xe2\x86\x94\xef\xb8\x8f",
-                         window.parentHandle(4),
+                         window.parent_handle(4),
                          0,
                          0,
                          1,
                          1,
                          handle_collapse_panel);
-        buttons[16].setTooltip("Collapse/expand the data entry panel");
+        buttons[16].set_tooltip("Collapse/expand the data entry panel");
         for(int i = 0; i < 18; i++) {
-            text_boxes[i].setMaxCharacters(6);
+            text_boxes[i].set_max_characters(6);
         }
-        pulldowns[1].addElement("Spectrometer live (nm)");
-        pulldowns[1].addElement("Spectrometer live (THz)");
-        pulldowns[1].addElement("All spectrometers");
-        pulldowns[1].addElement("Interferometry: Spectrum");
-        pulldowns[1].addElement("Interferometry: Time");
-        pulldowns[1].addElement("Interferometry: phase");
-        pulldowns[1].addElement("Interferometry: Group delay");
-        pulldowns[1].init(parentHandle, 0, 1, 8, 1);
-        g_signal_connect(pulldowns[1].elementHandle,
+        pulldowns[1].add_element("Spectrometer live (nm)");
+        pulldowns[1].add_element("Spectrometer live (THz)");
+        pulldowns[1].add_element("All spectrometers");
+        pulldowns[1].add_element("Interferometry: Spectrum");
+        pulldowns[1].add_element("Interferometry: Time");
+        pulldowns[1].add_element("Interferometry: phase");
+        pulldowns[1].add_element("Interferometry: Group delay");
+        pulldowns[1].init(parent_handle, 0, 1, 8, 1);
+        g_signal_connect(pulldowns[1].element_handle,
                          "notify::selected",
                          G_CALLBACK(drop_down_change_callback),
                          NULL);
-        gtk_widget_set_visible(buttons[9].elementHandle, false);
-        gtk_widget_set_visible(buttons[10].elementHandle, false);
-        gtk_widget_set_visible(buttons[11].elementHandle, false);
-        gtk_widget_set_visible(buttons[12].elementHandle, false);
+        gtk_widget_set_visible(buttons[9].element_handle, false);
+        gtk_widget_set_visible(buttons[10].element_handle, false);
+        gtk_widget_set_visible(buttons[11].element_handle, false);
+        gtk_widget_set_visible(buttons[12].element_handle, false);
         gtk_widget_set_visible(text_boxes[18].label, false);
-        gtk_widget_set_visible(text_boxes[18].elementHandle, false);
-        gtk_widget_set_visible(text_boxes[19].elementHandle, false);
-        gtk_widget_set_visible(text_boxes[20].elementHandle, false);
-        console.init(window.parentHandle(1), 0, 0, 1, 1);
-        console.cPrint("Attached spectrometers:\n");
+        gtk_widget_set_visible(text_boxes[18].element_handle, false);
+        gtk_widget_set_visible(text_boxes[19].element_handle, false);
+        gtk_widget_set_visible(text_boxes[20].element_handle, false);
+        console.init(window.parent_handle(1), 0, 0, 1, 1);
+        console.c_print("Attached spectrometers:\n");
         initializeSpectrometers();
-        pulldowns[0].init(parentHandle, 0, 0, 12, 1);
+        pulldowns[0].init(parent_handle, 0, 0, 12, 1);
 
         for(auto &box : text_boxes) {
             box.vertical_thick();
@@ -275,16 +275,16 @@ class MainGui {
         }
         window.present();
 
-        draw_boxes[0].queueDraw();
+        draw_boxes[0].queue_draw();
         timeoutID = g_timeout_add(20, G_SOURCE_FUNC(update_display), NULL);
     }
 
     void initializeSpectrometers() {
         spectrometer_set = std::vector<std::unique_ptr<Spectrometer>>();
         auto ocean_string = open_ocean_spectrometers(spectrometer_set);
-        console.cPrint("{}", ocean_string);
+        console.c_print("{}", ocean_string);
         for(size_t i = 0; i < spectrometer_set.size(); i++) {
-            console.cPrint("Device {}: {}\n    serial number: {}\n",
+            console.c_print("Device {}: {}\n    serial number: {}\n",
                            i,
                            spectrometer_set[i]->name,
                            spectrometer_set[i]->serial_number);
@@ -292,7 +292,7 @@ class MainGui {
                                                   i,
                                                   spectrometer_set[i]->name,
                                                   spectrometer_set[i]->serial_number);
-            pulldowns[0].addElement(new_element.c_str());
+            pulldowns[0].add_element(new_element.c_str());
         }
     }
 };
@@ -314,49 +314,49 @@ void svg_callback() {
 void handle_refresh_request() { theGui.requestPlotUpdate(); }
 
 void handle_get_overlay0() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(0);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).acquire_overlay(0);
 }
 
 void drop_down_change_callback() {
-    bool visibility = theGui.pulldowns[1].getValue() > 2;
-    gtk_widget_set_visible(theGui.buttons[9].elementHandle, visibility);
-    gtk_widget_set_visible(theGui.buttons[10].elementHandle, visibility);
-    gtk_widget_set_visible(theGui.buttons[11].elementHandle, visibility);
-    gtk_widget_set_visible(theGui.buttons[12].elementHandle, visibility);
+    bool visibility = theGui.pulldowns[1].get_value() > 2;
+    gtk_widget_set_visible(theGui.buttons[9].element_handle, visibility);
+    gtk_widget_set_visible(theGui.buttons[10].element_handle, visibility);
+    gtk_widget_set_visible(theGui.buttons[11].element_handle, visibility);
+    gtk_widget_set_visible(theGui.buttons[12].element_handle, visibility);
     gtk_widget_set_visible(theGui.text_boxes[18].label, visibility);
-    gtk_widget_set_visible(theGui.text_boxes[18].elementHandle, visibility);
-    gtk_widget_set_visible(theGui.text_boxes[19].elementHandle, visibility);
-    gtk_widget_set_visible(theGui.text_boxes[20].elementHandle, visibility);
+    gtk_widget_set_visible(theGui.text_boxes[18].element_handle, visibility);
+    gtk_widget_set_visible(theGui.text_boxes[19].element_handle, visibility);
+    gtk_widget_set_visible(theGui.text_boxes[20].element_handle, visibility);
 }
 
 void handle_get_overlay1() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(1);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).acquire_overlay(1);
 }
 
 void handle_get_overlay2() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_overlay(2);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).acquire_overlay(2);
 }
 
-void handle_collapse_panel() { theGui.window.toggleSettingsPanel(); }
+void handle_collapse_panel() { theGui.window.toggle_settings_panel(); }
 
 void handle_delete_overlay0() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(0);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).delete_overlay(0);
 }
 
 void handle_delete_overlay1() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(1);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).delete_overlay(1);
 }
 
 void handle_delete_overlay2() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).delete_overlay(2);
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).delete_overlay(2);
 }
 
 void handle_get_dark_spectrum() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).acquire_dark_spectrum();
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).acquire_dark_spectrum();
 }
 
 void handle_delete_dark_spectrum() {
-    (*spectrometer_set[theGui.pulldowns[0].getValue()]).disable_dark_spectrum();
+    (*spectrometer_set[theGui.pulldowns[0].get_value()]).disable_dark_spectrum();
 }
 
 void acquisition_thread(int active_spectrometer,
@@ -370,20 +370,20 @@ void acquisition_thread(int active_spectrometer,
                            seconds_to_wait,
                            (*spectrometer_set[active_spectrometer]));
     theBatch.save(path, timestamp);
-    theGui.console.tPrint("Finished writing {}!\n", path);
+    theGui.console.t_print("Finished writing {}!\n", path);
 }
 
 void handle_save() {
     theGui.stop_live();
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
     std::string path;
-    theGui.file_paths[0].copyBuffer(path);
-    bool timestamp = theGui.checkboxes[2].isChecked();
-    size_t N = (size_t)theGui.text_boxes[14].valueDouble();
-    double integration_time = theGui.text_boxes[0].valueDouble();
-    double waitTime = theGui.text_boxes[13].valueDouble();
+    theGui.file_paths[0].copy_buffer(path);
+    bool timestamp = theGui.checkboxes[2].is_checked();
+    size_t N = (size_t)theGui.text_boxes[14].value_double();
+    double integration_time = theGui.text_boxes[0].value_double();
+    double waitTime = theGui.text_boxes[13].value_double();
     std::thread(acquisition_thread,
                 active_spectrometer,
                 N,
@@ -396,8 +396,8 @@ void handle_save() {
 
 void handle_save_phase() {
     std::string path;
-    theGui.file_paths[0].copyBuffer(path);
-    bool timestamp = theGui.checkboxes[2].isChecked();
+    theGui.file_paths[0].copy_buffer(path);
+    bool timestamp = theGui.checkboxes[2].is_checked();
     the_interference_controller.save(path, timestamp);
 }
 
@@ -426,16 +426,16 @@ void reference_b_acquisition_thread(int active_spectrometer,
 void handle_reference_a() {
     handle_reset_controller();
     if(!the_interference_controller.check_configuration_status()) {
-        theGui.console.cPrint("Reset controller with frequencies first.\n");
+        theGui.console.c_print("Reset controller with frequencies first.\n");
         return;
     }
     theGui.stop_live();
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
-    size_t N = (size_t)theGui.text_boxes[14].valueDouble();
-    double integration_time = theGui.text_boxes[0].valueDouble();
-    double waitTime = theGui.text_boxes[13].valueDouble();
+    size_t N = (size_t)theGui.text_boxes[14].value_double();
+    double integration_time = theGui.text_boxes[0].value_double();
+    double waitTime = theGui.text_boxes[13].value_double();
     std::thread(reference_a_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
         .detach();
 }
@@ -443,27 +443,27 @@ void handle_reference_a() {
 void handle_reference_b() {
     handle_reset_controller();
     if(!the_interference_controller.check_configuration_status()) {
-        theGui.console.cPrint("Reset controller with frequencies first.\n");
+        theGui.console.c_print("Reset controller with frequencies first.\n");
         return;
     }
     theGui.stop_live();
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if((*spectrometer_set[active_spectrometer]).check_lock())
         return;
-    size_t N = (size_t)theGui.text_boxes[14].valueDouble();
-    double integration_time = theGui.text_boxes[0].valueDouble();
-    double waitTime = theGui.text_boxes[13].valueDouble();
+    size_t N = (size_t)theGui.text_boxes[14].value_double();
+    double integration_time = theGui.text_boxes[0].value_double();
+    double waitTime = theGui.text_boxes[13].value_double();
     std::thread(reference_b_acquisition_thread, active_spectrometer, N, integration_time, waitTime)
         .detach();
 }
 
 void handle_reset_controller() {
-    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].valueDouble());
+    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].value_double());
     if(num_freqs < 2)
         return;
-    double fMin = theGui.text_boxes[16].valueDouble();
-    double fMax = theGui.text_boxes[17].valueDouble();
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    double fMin = theGui.text_boxes[16].value_double();
+    double fMax = theGui.text_boxes[17].value_double();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(fMax == 0.0) {
         fMax = (*spectrometer_set[active_spectrometer]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
@@ -479,7 +479,7 @@ void handle_reset_controller() {
 void handle_reset_phase() { the_interference_controller.reset_phase(); }
 
 void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data) {
-    switch(theGui.pulldowns[1].getValue()) {
+    switch(theGui.pulldowns[1].get_value()) {
         case 0:
             break;
         case 1:
@@ -504,7 +504,7 @@ void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
             return;
     }
 
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     if(active_spectrometer != -1 &&
@@ -519,20 +519,20 @@ void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -544,7 +544,7 @@ void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_Spectrum.svg");
         sPlot.SVGPath = svgPath;
     }
@@ -552,43 +552,43 @@ void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
     if(theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) &&
        !(*spectrometer_set[active_spectrometer]).check_lock()) {
         (*spectrometer_set[active_spectrometer])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
         (*spectrometer_set[active_spectrometer]).acquire_single();
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
@@ -648,7 +648,7 @@ void draw_spectrum_frequency(GtkDrawingArea *area,
                              int width,
                              int height,
                              gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     if((active_spectrometer < static_cast<int>(spectrometer_set.size())) &&
@@ -662,20 +662,20 @@ void draw_spectrum_frequency(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -687,15 +687,15 @@ void draw_spectrum_frequency(GtkDrawingArea *area,
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_SpectrumTHz.svg");
         sPlot.SVGPath = svgPath;
     }
-    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].valueDouble());
+    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].value_double());
     if(num_freqs < 2)
         return;
-    double fMin = theGui.text_boxes[16].valueDouble();
-    double fMax = theGui.text_boxes[17].valueDouble();
+    double fMin = theGui.text_boxes[16].value_double();
+    double fMax = theGui.text_boxes[17].value_double();
 
     if(fMax == 0.0) {
         fMax = (*spectrometer_set[active_spectrometer]).wavelengths()[0];
@@ -715,45 +715,45 @@ void draw_spectrum_frequency(GtkDrawingArea *area,
     if(theGui.running_live() && (active_spectrometer < static_cast<int>(spectrometer_set.size())) &&
        !(*spectrometer_set[active_spectrometer]).check_lock() && num_freqs > 0) {
         (*spectrometer_set[active_spectrometer])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
         liveSpectrum =
             (*spectrometer_set[active_spectrometer]).acquire_single_frequency(frequencies);
     } else
         return;
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
@@ -819,7 +819,7 @@ void draw_spectra_frequency(GtkDrawingArea *area,
                             int width,
                             int height,
                             gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     LwePlot sPlot;
@@ -828,20 +828,20 @@ void draw_spectra_frequency(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceYmin = false;
     bool forceYmax = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceYmin = true;
         forceYmax = yMax != 0.0;
@@ -852,15 +852,15 @@ void draw_spectra_frequency(GtkDrawingArea *area,
     }
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_SpectrumTHz.svg");
         sPlot.SVGPath = svgPath;
     }
-    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].valueDouble());
+    size_t num_freqs = static_cast<size_t>(theGui.text_boxes[15].value_double());
     if(num_freqs < 2)
         return;
-    double fMin = theGui.text_boxes[16].valueDouble();
-    double fMax = theGui.text_boxes[17].valueDouble();
+    double fMin = theGui.text_boxes[16].value_double();
+    double fMax = theGui.text_boxes[17].value_double();
     if(fMax == 0.0) {
         fMax = (*spectrometer_set[0]).wavelengths()[0];
         fMax = 1e-3 * lightC<double>() / fMax;
@@ -893,38 +893,38 @@ void draw_spectra_frequency(GtkDrawingArea *area,
         return;
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
@@ -968,7 +968,7 @@ void draw_interference_spectrum(GtkDrawingArea *area,
                                 int width,
                                 int height,
                                 gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     handle_reset_controller();
@@ -980,72 +980,72 @@ void draw_interference_spectrum(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceY = true;
     }
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_InterferenceF.svg");
         sPlot.SVGPath = svgPath;
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
-        (*spectrometer_set[theGui.pulldowns[0].getValue()])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].get_value()]).check_lock()) {
+        (*spectrometer_set[theGui.pulldowns[0].get_value()])
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
+        the_interference_controller.set_averaging(theGui.checkboxes[3].is_checked());
         the_interference_controller.acquire_new_interferogram(
-            (*spectrometer_set[theGui.pulldowns[0].getValue()]));
+            (*spectrometer_set[theGui.pulldowns[0].get_value()]));
     }
     sPlot.height = height;
     sPlot.width = width;
@@ -1090,7 +1090,7 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
                                      int width,
                                      int height,
                                      gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     handle_reset_controller();
@@ -1100,74 +1100,74 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceY = true;
     }
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_InterferenceF.svg");
         sPlot.SVGPath = svgPath;
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
-    double t0 = theGui.text_boxes[18].valueDouble();
-    double sigma = theGui.text_boxes[19].valueDouble();
-    double ord = theGui.text_boxes[20].valueDouble();
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
-        (*spectrometer_set[theGui.pulldowns[0].getValue()])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
+    double t0 = theGui.text_boxes[18].value_double();
+    double sigma = theGui.text_boxes[19].value_double();
+    double ord = theGui.text_boxes[20].value_double();
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].get_value()]).check_lock()) {
+        (*spectrometer_set[theGui.pulldowns[0].get_value()])
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
+        the_interference_controller.set_averaging(theGui.checkboxes[3].is_checked());
         the_interference_controller.acquire_new_interferogram(
-            (*spectrometer_set[theGui.pulldowns[0].getValue()]));
+            (*spectrometer_set[theGui.pulldowns[0].get_value()]));
     }
     the_interference_controller.set_time_filter(t0, sigma, ord);
     the_interference_controller.generate_time_plot();
@@ -1208,7 +1208,7 @@ void draw_interference_phase(GtkDrawingArea *area,
                              int width,
                              int height,
                              gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     handle_reset_controller();
@@ -1218,72 +1218,72 @@ void draw_interference_phase(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceY = true;
     }
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_InterferencePhase.svg");
         sPlot.SVGPath = svgPath;
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
-        (*spectrometer_set[theGui.pulldowns[0].getValue()])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].get_value()]).check_lock()) {
+        (*spectrometer_set[theGui.pulldowns[0].get_value()])
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
+        the_interference_controller.set_averaging(theGui.checkboxes[3].is_checked());
         the_interference_controller.acquire_new_phase(
-            (*spectrometer_set[theGui.pulldowns[0].getValue()]));
+            (*spectrometer_set[theGui.pulldowns[0].get_value()]));
     }
 
     sPlot.height = height;
@@ -1319,7 +1319,7 @@ void draw_interference_group_delay(GtkDrawingArea *area,
                                    int width,
                                    int height,
                                    gpointer data) {
-    int active_spectrometer = theGui.pulldowns[0].getValue();
+    int active_spectrometer = theGui.pulldowns[0].get_value();
     if(active_spectrometer < 0)
         return;
     handle_reset_controller();
@@ -1329,72 +1329,72 @@ void draw_interference_group_delay(GtkDrawingArea *area,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if(theGui.checkboxes[1].isChecked()) {
+    if(theGui.checkboxes[1].is_checked()) {
         logPlot = true;
     }
 
     bool forceX = false;
-    double xMin = theGui.text_boxes[22].valueDouble();
-    double xMax = theGui.text_boxes[23].valueDouble();
+    double xMin = theGui.text_boxes[22].value_double();
+    double xMax = theGui.text_boxes[23].value_double();
     if(xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = theGui.text_boxes[24].valueDouble();
-    double yMax = theGui.text_boxes[25].valueDouble();
+    double yMin = theGui.text_boxes[24].value_double();
+    double yMax = theGui.text_boxes[25].value_double();
     if(yMin != yMax && yMax > yMin) {
         forceY = true;
     }
 
     if(saveSVG) {
         std::string svgPath;
-        theGui.file_paths[0].copyBuffer(svgPath);
+        theGui.file_paths[0].copy_buffer(svgPath);
         svgPath.append("_InterferencePhase.svg");
         sPlot.SVGPath = svgPath;
     }
 
     LweColor mainColor(0.5, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[1].valueDouble() + theGui.text_boxes[2].valueDouble() +
-               theGui.text_boxes[3].valueDouble())) {
-        mainColor = LweColor(theGui.text_boxes[1].valueDouble(),
-                             theGui.text_boxes[2].valueDouble(),
-                             theGui.text_boxes[3].valueDouble(),
+    if(0.0 != (theGui.text_boxes[1].value_double() + theGui.text_boxes[2].value_double() +
+               theGui.text_boxes[3].value_double())) {
+        mainColor = LweColor(theGui.text_boxes[1].value_double(),
+                             theGui.text_boxes[2].value_double(),
+                             theGui.text_boxes[3].value_double(),
                              1);
     }
 
     LweColor overLay0Color(1, 0, 1, 1);
-    if(0.0 != (theGui.text_boxes[4].valueDouble() + theGui.text_boxes[5].valueDouble() +
-               theGui.text_boxes[6].valueDouble())) {
-        overLay0Color = LweColor(theGui.text_boxes[4].valueDouble(),
-                                 theGui.text_boxes[5].valueDouble(),
-                                 theGui.text_boxes[6].valueDouble(),
+    if(0.0 != (theGui.text_boxes[4].value_double() + theGui.text_boxes[5].value_double() +
+               theGui.text_boxes[6].value_double())) {
+        overLay0Color = LweColor(theGui.text_boxes[4].value_double(),
+                                 theGui.text_boxes[5].value_double(),
+                                 theGui.text_boxes[6].value_double(),
                                  1);
     }
 
     LweColor overLay1Color(1, 0.5, 0, 1);
-    if(0.0 != (theGui.text_boxes[7].valueDouble() + theGui.text_boxes[8].valueDouble() +
-               theGui.text_boxes[9].valueDouble())) {
-        overLay1Color = LweColor(theGui.text_boxes[7].valueDouble(),
-                                 theGui.text_boxes[8].valueDouble(),
-                                 theGui.text_boxes[9].valueDouble(),
+    if(0.0 != (theGui.text_boxes[7].value_double() + theGui.text_boxes[8].value_double() +
+               theGui.text_boxes[9].value_double())) {
+        overLay1Color = LweColor(theGui.text_boxes[7].value_double(),
+                                 theGui.text_boxes[8].value_double(),
+                                 theGui.text_boxes[9].value_double(),
                                  1);
     }
 
     LweColor overLay2Color(0, 1, 1, 1);
-    if(0.0 != (theGui.text_boxes[10].valueDouble() + theGui.text_boxes[11].valueDouble() +
-               theGui.text_boxes[12].valueDouble())) {
-        overLay2Color = LweColor(theGui.text_boxes[10].valueDouble(),
-                                 theGui.text_boxes[11].valueDouble(),
-                                 theGui.text_boxes[12].valueDouble(),
+    if(0.0 != (theGui.text_boxes[10].value_double() + theGui.text_boxes[11].value_double() +
+               theGui.text_boxes[12].value_double())) {
+        overLay2Color = LweColor(theGui.text_boxes[10].value_double(),
+                                 theGui.text_boxes[11].value_double(),
+                                 theGui.text_boxes[12].value_double(),
                                  1);
     }
 
-    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].getValue()]).check_lock()) {
-        (*spectrometer_set[theGui.pulldowns[0].getValue()])
-            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].valueDouble()));
-        the_interference_controller.set_averaging(theGui.checkboxes[3].isChecked());
+    if(theGui.running_live() && !(*spectrometer_set[theGui.pulldowns[0].get_value()]).check_lock()) {
+        (*spectrometer_set[theGui.pulldowns[0].get_value()])
+            .set_integration_time((unsigned long)round(1000 * theGui.text_boxes[0].value_double()));
+        the_interference_controller.set_averaging(theGui.checkboxes[3].is_checked());
         the_interference_controller.acquire_new_phase(
-            (*spectrometer_set[theGui.pulldowns[0].getValue()]));
+            (*spectrometer_set[theGui.pulldowns[0].get_value()]));
     }
 
     sPlot.height = height;
@@ -1427,7 +1427,7 @@ void draw_interference_group_delay(GtkDrawingArea *area,
 
 bool update_display() {
     theGui.requestPlotUpdate();
-    theGui.console.updateFromBuffer();
+    theGui.console.update_from_buffer();
     theGui.apply_update();
     return true;
 }

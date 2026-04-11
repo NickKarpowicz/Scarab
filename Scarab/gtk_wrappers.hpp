@@ -11,87 +11,87 @@
 #include <mach-o/dyld.h>
 #endif
 // GLOBAL VARIABLE: GTK MUTEX
-static std::mutex GTKmutex;
+static std::mutex gt_kmutex;
 #include "ExternalLibraries/LightwaveExplorerPlots.h"
 #include <format>
 
 class GtkGuiElement {
   public:
     GtkWidget *label{};
-    GtkWidget *elementHandle{};
+    GtkWidget *element_handle{};
     int m_x{};
     int m_y{};
     int m_width{};
     int m_height{};
-    bool isAttached = false;
-    GtkWidget *_grid{};
+    bool is_attached = false;
+    GtkWidget *grid{};
 
-    void setPosition(GtkWidget *grid, const int x, const int y, const int width, const int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        if(_grid)
-            gtk_grid_remove(GTK_GRID(_grid), elementHandle);
-        _grid = grid;
+    void set_position(GtkWidget *grid, const int x, const int y, const int width, const int height) {
+        std::unique_lock gt_klock(gt_kmutex);
+        if(grid)
+            gtk_grid_remove(GTK_GRID(grid), element_handle);
+        grid = grid;
         m_x = x;
         m_y = y;
         m_width = width;
         m_height = height;
-        gtk_grid_attach(GTK_GRID(_grid), elementHandle, m_x, m_y, m_width, m_height);
+        gtk_grid_attach(GTK_GRID(grid), element_handle, m_x, m_y, m_width, m_height);
     }
-    void remove() { gtk_grid_remove(GTK_GRID(_grid), elementHandle); }
-    void setLabel(const int x, const int y, const char *labelText) {
-        std::unique_lock GTKlock(GTKmutex);
-        label = gtk_label_new(labelText);
+    void remove() { gtk_grid_remove(GTK_GRID(grid), element_handle); }
+    void set_label(const int x, const int y, const char *label_text) {
+        std::unique_lock gt_klock(gt_kmutex);
+        label = gtk_label_new(label_text);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), 45);
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        gtk_grid_attach(GTK_GRID(_grid), label, m_x + x, m_y + y, 6, 1);
+        gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, 6, 1);
     }
-    void setLabel(const int x,
+    void set_label(const int x,
                   const int y,
-                  const char *labelText,
+                  const char *label_text,
                   const int characters,
                   const int grids) {
-        std::unique_lock GTKlock(GTKmutex);
-        label = gtk_label_new(labelText);
+        std::unique_lock gt_klock(gt_kmutex);
+        label = gtk_label_new(label_text);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), characters);
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        gtk_grid_attach(GTK_GRID(_grid), label, m_x + x, m_y + y, grids, 1);
+        gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, grids, 1);
     }
     void squeeze() {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
-        gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_widget_set_valign(element_handle, GTK_ALIGN_START);
+        gtk_widget_set_halign(element_handle, GTK_ALIGN_END);
     }
     void vertical_thick() {
-        if(!GTK_IS_WIDGET(elementHandle))
+        if(!GTK_IS_WIDGET(element_handle))
             return;
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_widget_set_valign(elementHandle, GTK_ALIGN_FILL);
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_widget_set_valign(element_handle, GTK_ALIGN_FILL);
     }
-    void setTooltip(const char *tooltipText) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_widget_set_tooltip_text(elementHandle, tooltipText);
+    void set_tooltip(const char *tooltip_text) {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_widget_set_tooltip_text(element_handle, tooltip_text);
     }
 };
 
 class GtkTextBox : public GtkGuiElement {
   public:
     void init(GtkWidget *grid, const int x, const int y, const int width, const int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_entry_new();
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_entry_new();
         // gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
-        gtk_widget_set_hexpand(elementHandle, false);
-        gtk_widget_set_vexpand(elementHandle, false);
-        gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 8);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
+        gtk_widget_set_hexpand(element_handle, false);
+        gtk_widget_set_vexpand(element_handle, false);
+        gtk_editable_set_max_width_chars(GTK_EDITABLE(element_handle), 8);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
     }
 
-    double valueDouble() {
-        std::unique_lock GTKlock(GTKmutex);
+    double value_double() {
+        std::unique_lock gt_klock(gt_kmutex);
         double sdata;
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -103,10 +103,10 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    int valueInt() const {
-        std::unique_lock GTKlock(GTKmutex);
+    int value_int() const {
+        std::unique_lock gt_klock(gt_kmutex);
         int sdata;
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -118,9 +118,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToPointer(int *sdata) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_pointer(int *sdata) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -129,9 +129,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToPointer(int64_t *sdata) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_pointer(int64_t *sdata) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -140,9 +140,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToPointer(double *sdata) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_pointer(double *sdata) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -151,9 +151,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToTwoPointers(double *sdata, double *sdata2) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_two_pointers(double *sdata, double *sdata2) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         char c;
         *sdata2 = 0.0;
@@ -164,9 +164,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToTwoPointers(double multiplier, double *sdata, double *sdata2) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_two_pointers(double multiplier, double *sdata, double *sdata2) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         char c;
         *sdata2 = 0.0;
@@ -179,9 +179,9 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void valueToPointer(double multiplier, double *sdata) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void value_to_pointer(double multiplier, double *sdata) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         int len = gtk_entry_buffer_get_length(buf);
         if(len > 0) {
             char *cbuf = (char *)gtk_entry_buffer_get_text(buf);
@@ -191,65 +191,65 @@ class GtkTextBox : public GtkGuiElement {
         }
     }
 
-    void setMaxCharacters(const int charLimit) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
+    void set_max_characters(const int char_limit) {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_editable_set_max_width_chars(GTK_EDITABLE(element_handle), char_limit);
     }
 
-    void setToDouble(const double in) {
-        std::unique_lock GTKlock(GTKmutex);
+    void set_to_double(const double in) {
+        std::unique_lock gt_klock(gt_kmutex);
         std::string s = std::format(std::string_view("{:g}"), in);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
-    template <typename... Args> void overwritePrint(std::string_view format, Args &&...args) {
-        std::unique_lock GTKlock(GTKmutex);
+    template <typename... Args> void overwrite_print(std::string_view format, Args &&...args) {
+        std::unique_lock gt_klock(gt_kmutex);
         std::string s = std::vformat(format, std::make_format_args(args...));
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
-    void copyBuffer(char *destination, const int64_t maxLength) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void copy_buffer(char *destination, const int64_t max_length) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         std::string s(gtk_entry_buffer_get_text(buf));
         s.append("\0");
-        s.copy(destination, maxLength);
+        s.copy(destination, max_length);
     }
 
-    void copyBuffer(std::string &destination) {
-        std::unique_lock GTKlock(GTKmutex);
-        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+    void copy_buffer(std::string &destination) {
+        std::unique_lock gt_klock(gt_kmutex);
+        GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY(element_handle));
         std::string s(gtk_entry_buffer_get_text(buf));
         destination = s;
     }
 };
 
-static gboolean scrollTextViewToEndHandler(gpointer data) {
-    std::unique_lock GTKlock(GTKmutex);
+static gboolean scroll_text_view_to_end_handler(gpointer data) {
+    std::unique_lock gt_klock(gt_kmutex);
     GtkAdjustment *adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(data));
     gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     return false;
 }
 
 class GtkConsole : public GtkGuiElement {
-    GtkWidget *consoleText{};
-    bool hasNewText{};
+    GtkWidget *console_text{};
+    bool has_new_text{};
     GtkTextBuffer *buf{};
 
   public:
-    std::string textBuffer;
+    std::string text_buffer;
     void init(GtkWidget *grid, const int x, const int y, const int width, const int height) {
-        consoleText = gtk_text_view_new();
-        gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), false);
-        elementHandle = gtk_scrolled_window_new();
-        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
-        gtk_widget_set_vexpand(elementHandle, true);
-        gtk_widget_set_vexpand(consoleText, true);
-        gtk_widget_set_hexpand(elementHandle, true);
-        gtk_widget_set_hexpand(consoleText, true);
-        setPosition(grid, x, y, width, height);
-        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        console_text = gtk_text_view_new();
+        gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(console_text), false);
+        element_handle = gtk_scrolled_window_new();
+        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(element_handle), console_text);
+        gtk_widget_set_vexpand(element_handle, true);
+        gtk_widget_set_vexpand(console_text, true);
+        gtk_widget_set_hexpand(element_handle, true);
+        gtk_widget_set_hexpand(console_text, true);
+        set_position(grid, x, y, width, height);
+        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(console_text));
 
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
         gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
@@ -260,14 +260,14 @@ class GtkConsole : public GtkGuiElement {
         gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#CC99FFFF", NULL);
         gtk_text_buffer_create_tag(buf, "string", "foreground", "#FFAA00FF", NULL);
     }
-    void init(GtkWidget *grid, int x, int y, int width, int height, int minWidth, int minHeight) {
-        consoleText = gtk_text_view_new();
-        elementHandle = gtk_scrolled_window_new();
-        gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(elementHandle), minHeight);
-        gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(elementHandle), minWidth);
-        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
-        setPosition(grid, x, y, width, height);
-        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+    void init(GtkWidget *grid, int x, int y, int width, int height, int min_width, int min_height) {
+        console_text = gtk_text_view_new();
+        element_handle = gtk_scrolled_window_new();
+        gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(element_handle), min_height);
+        gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(element_handle), min_width);
+        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(element_handle), console_text);
+        set_position(grid, x, y, width, height);
+        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(console_text));
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
         gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
         gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
@@ -277,225 +277,225 @@ class GtkConsole : public GtkGuiElement {
         gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#9900CCFF", NULL);
     }
 
-    template <typename... Args> void cPrint(std::string_view format, Args &&...args) {
-        std::unique_lock GTKlock(GTKmutex);
+    template <typename... Args> void c_print(std::string_view format, Args &&...args) {
+        std::unique_lock gt_klock(gt_kmutex);
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
         std::string s = std::vformat(format, std::make_format_args(args...));
         gtk_text_buffer_insert_markup(buf, &stop, s.c_str(), -1);
-        GTKlock.unlock();
-        scrollToEnd();
+        gt_klock.unlock();
+        scroll_to_end();
     }
 
-    template <typename... Args> void tPrint(std::string_view format, Args &&...args) {
-        std::unique_lock GTKlock(GTKmutex);
+    template <typename... Args> void t_print(std::string_view format, Args &&...args) {
+        std::unique_lock gt_klock(gt_kmutex);
         std::string s = std::vformat(format, std::make_format_args(args...));
-        textBuffer.append(s);
-        hasNewText = true;
+        text_buffer.append(s);
+        has_new_text = true;
     }
-    void scrollToEnd() {
-        std::unique_lock GTKlock(GTKmutex);
-        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scrollTextViewToEndHandler, elementHandle, NULL);
+    void scroll_to_end() {
+        std::unique_lock gt_klock(gt_kmutex);
+        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scroll_text_view_to_end_handler, element_handle, NULL);
     }
-    void updateFromBuffer() {
-        if(hasNewText) {
-            std::unique_lock GTKlock(GTKmutex);
-            hasNewText = false;
+    void update_from_buffer() {
+        if(has_new_text) {
+            std::unique_lock gt_klock(gt_kmutex);
+            has_new_text = false;
             GtkTextIter end;
             gtk_text_buffer_get_end_iter(buf, &end);
-            gtk_text_buffer_insert_markup(buf, &end, textBuffer.c_str(), -1);
-            textBuffer.clear();
-            GTKlock.unlock();
-            scrollToEnd();
+            gtk_text_buffer_insert_markup(buf, &end, text_buffer.c_str(), -1);
+            text_buffer.clear();
+            gt_klock.unlock();
+            scroll_to_end();
         }
     }
 
-    void directOverwritePrint(const char *sIn) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_text_buffer_set_text(buf, sIn, -1);
-        textBuffer.clear();
-        GTKlock.unlock();
-        scrollToEnd();
+    void direct_overwrite_print(const char *s_in) {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_text_buffer_set_text(buf, s_in, -1);
+        text_buffer.clear();
+        gt_klock.unlock();
+        scroll_to_end();
     }
 
-    template <typename... Args> void overwritePrint(std::string_view format, Args &&...args) {
-        std::unique_lock GTKlock(GTKmutex);
+    template <typename... Args> void overwrite_print(std::string_view format, Args &&...args) {
+        std::unique_lock gt_klock(gt_kmutex);
         std::string s = Svformat(format, Smake_format_args(args...));
         gtk_text_buffer_set_text(buf, s.c_str(), (int)s.length());
-        textBuffer.clear();
-        GTKlock.unlock();
-        scrollToEnd();
+        text_buffer.clear();
+        gt_klock.unlock();
+        scroll_to_end();
     }
 
-    void copyBuffer(char *destination, int64_t maxLength) {
-        std::unique_lock GTKlock(GTKmutex);
+    void copy_buffer(char *destination, int64_t max_length) {
+        std::unique_lock gt_klock(gt_kmutex);
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        char *realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
-        std::string s(realBuf);
-        s.copy(destination, maxLength);
+        char *real_buf = gtk_text_buffer_get_text(buf, &start, &stop, false);
+        std::string s(real_buf);
+        s.copy(destination, max_length);
     }
 
-    void copyBuffer(std::string &s) {
-        std::unique_lock GTKlock(GTKmutex);
+    void copy_buffer(std::string &s) {
+        std::unique_lock gt_klock(gt_kmutex);
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        char *realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
-        std::string c(realBuf);
+        char *real_buf = gtk_text_buffer_get_text(buf, &start, &stop, false);
+        std::string c(real_buf);
         s = c;
     }
 
     void clear() {
-        std::unique_lock GTKlock(GTKmutex);
-        char emptyBuffer[] = "";
-        textBuffer.clear();
-        GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_set_text(buf, emptyBuffer, 0);
-        GTKlock.unlock();
-        scrollToEnd();
+        std::unique_lock gt_klock(gt_kmutex);
+        char empty_buffer[] = "";
+        text_buffer.clear();
+        GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(console_text));
+        gtk_text_buffer_set_text(buf, empty_buffer, 0);
+        gt_klock.unlock();
+        scroll_to_end();
     }
 };
 
 class GtkPushbutton : public GtkGuiElement {
   public:
-    void init(const char *buttonName,
+    void init(const char *button_name,
               GtkWidget *grid,
               int x,
               int y,
               int width,
               int height,
-              auto buttonFunction) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_button_new_with_label(buttonName);
-        gtk_widget_set_hexpand(elementHandle, false);
-        gtk_widget_set_vexpand(elementHandle, false);
-        gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
-        setFunction(buttonFunction);
+              auto button_function) {
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_button_new_with_label(button_name);
+        gtk_widget_set_hexpand(element_handle, false);
+        gtk_widget_set_vexpand(element_handle, false);
+        gtk_widget_set_valign(element_handle, GTK_ALIGN_START);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
+        set_function(button_function);
     }
-    void init(const char *buttonName,
+    void init(const char *button_name,
               GtkWidget *grid,
               int x,
               int y,
               int width,
               int height,
-              auto buttonFunction,
-              gpointer functionData) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_button_new_with_label(buttonName);
-        gtk_widget_set_hexpand(elementHandle, false);
-        gtk_widget_set_vexpand(elementHandle, false);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
-        setFunction(buttonFunction, functionData);
+              auto button_function,
+              gpointer function_data) {
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_button_new_with_label(button_name);
+        gtk_widget_set_hexpand(element_handle, false);
+        gtk_widget_set_vexpand(element_handle, false);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
+        set_function(button_function, function_data);
     }
-    void setFunction(auto buttonFunction) {
-        std::unique_lock GTKlock(GTKmutex);
-        g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), NULL);
+    void set_function(auto button_function) {
+        std::unique_lock gt_klock(gt_kmutex);
+        g_signal_connect(element_handle, "clicked", G_CALLBACK(button_function), NULL);
     }
-    void setFunction(auto buttonFunction, gpointer param) {
-        std::unique_lock GTKlock(GTKmutex);
-        g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), param);
+    void set_function(auto button_function, gpointer param) {
+        std::unique_lock gt_klock(gt_kmutex);
+        g_signal_connect(element_handle, "clicked", G_CALLBACK(button_function), param);
     }
 };
 
 class GtkCheck : public GtkGuiElement {
   public:
-    void init(const char *buttonName, GtkWidget *grid, int x, int y, int width, int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_check_button_new_with_label(buttonName);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
+    void init(const char *button_name, GtkWidget *grid, int x, int y, int width, int height) {
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_check_button_new_with_label(button_name);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
     }
-    bool isChecked() {
-        std::unique_lock GTKlock(GTKmutex);
-        return (bool)gtk_check_button_get_active(GTK_CHECK_BUTTON(elementHandle));
+    bool is_checked() {
+        std::unique_lock gt_klock(gt_kmutex);
+        return (bool)gtk_check_button_get_active(GTK_CHECK_BUTTON(element_handle));
     }
-    void setFunction(auto buttonFunction) {
-        std::unique_lock GTKlock(GTKmutex);
-        g_signal_connect_after(elementHandle, "toggled", G_CALLBACK(buttonFunction), NULL);
+    void set_function(auto button_function) {
+        std::unique_lock gt_klock(gt_kmutex);
+        g_signal_connect_after(element_handle, "toggled", G_CALLBACK(button_function), NULL);
     }
 };
 
 class GtkPulldown : public GtkGuiElement {
-    std::vector<std::string> entryNames;
+    std::vector<std::string> entry_names;
 
   public:
-    void addElement(const char *newelement) {
+    void add_element(const char *newelement) {
         std::string s(newelement);
-        stripLineBreaks(s);
-        entryNames.push_back(s);
+        strip_line_breaks(s);
+        entry_names.push_back(s);
     }
     void init(GtkWidget *grid, const int x, const int y, const int width, const int height) {
         // make an array of pointers to c-strings for GTK
-        std::vector<const char *> stringPointersForGTK;
-        stringPointersForGTK.reserve(entryNames.size() + 1);
-        std::transform(entryNames.begin(),
-                       entryNames.end(),
-                       std::back_inserter(stringPointersForGTK),
+        std::vector<const char *> string_pointers_for_gtk;
+        string_pointers_for_gtk.reserve(entry_names.size() + 1);
+        std::transform(entry_names.begin(),
+                       entry_names.end(),
+                       std::back_inserter(string_pointers_for_gtk),
                        [](const std::string &s) { return s.c_str(); });
-        stringPointersForGTK.push_back(nullptr);
+        string_pointers_for_gtk.push_back(nullptr);
 
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_drop_down_new_from_strings(stringPointersForGTK.data());
-        gtk_widget_set_hexpand(elementHandle, false);
-        gtk_widget_set_vexpand(elementHandle, false);
-        gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_drop_down_new_from_strings(string_pointers_for_gtk.data());
+        gtk_widget_set_hexpand(element_handle, false);
+        gtk_widget_set_vexpand(element_handle, false);
+        gtk_widget_set_valign(element_handle, GTK_ALIGN_START);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
     }
-    int getValue() {
-        std::unique_lock GTKlock(GTKmutex);
-        return (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(elementHandle));
+    int get_value() {
+        std::unique_lock gt_klock(gt_kmutex);
+        return (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(element_handle));
     }
-    void setValue(int target) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
+    void set_value(int target) {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(element_handle), target);
     }
-    inline void removeCharacterFromString(std::string &s, const char removedChar) {
-        std::erase(s, removedChar);
+    inline void remove_character_from_string(std::string &s, const char removed_char) {
+        std::erase(s, removed_char);
     }
-    void stripLineBreaks(std::string &s) {
-        removeCharacterFromString(s, '\r');
-        removeCharacterFromString(s, '\n');
+    void strip_line_breaks(std::string &s) {
+        remove_character_from_string(s, '\r');
+        remove_character_from_string(s, '\n');
     }
 };
 
 class GtkMainWindow {
     GtkWidget *grid = nullptr;
-    GtkWidget *bigGrid = nullptr;
-    GtkWidget *consoleGrid = nullptr;
-    GtkWidget *plotGrid = nullptr;
-    GtkWidget *plotControlsGrid = nullptr;
-    GtkWidget *consoleControlsGrid = nullptr;
-    GtkWidget *consoleControlsSubgrid1 = nullptr;
-    GtkWidget *consoleControlsSubgrid2 = nullptr;
-    GtkWidget *plotControlsSubgrid1 = nullptr;
-    GtkWidget *plotControlsSubgrid2 = nullptr;
-    unsigned int updaterID = 0;
-    bool showingControlsPanel = true;
+    GtkWidget *big_grid = nullptr;
+    GtkWidget *console_grid = nullptr;
+    GtkWidget *plot_grid = nullptr;
+    GtkWidget *plot_controls_grid = nullptr;
+    GtkWidget *console_controls_grid = nullptr;
+    GtkWidget *console_controls_subgrid1 = nullptr;
+    GtkWidget *console_controls_subgrid2 = nullptr;
+    GtkWidget *plot_controls_subgrid1 = nullptr;
+    GtkWidget *plot_controls_subgrid2 = nullptr;
+    unsigned int updater_id = 0;
+    bool showing_controls_panel = true;
 
   public:
     GtkWidget *window = nullptr;
-    void init(GtkApplication *appHandle, const char *windowName, int width, int height) {
-        std::unique_lock GTKlock(GTKmutex);
+    void init(GtkApplication *app_handle, const char *window_name, int width, int height) {
+        std::unique_lock gt_klock(gt_kmutex);
 
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
-        GtkCssProvider *textProvider = gtk_css_provider_new();
+        GtkCssProvider *text_provider = gtk_css_provider_new();
 // override style more aggressively if it will be Adwaita
 #if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
         std::string styleString("label, scale { font-family: Arial; font-weight: bold; }\n "
                                 "button, entry, textview { font-family: Arial; font-weight: bold; "
                                 "color: #FFFFFF; background-color: #151515; }");
 #else
-        std::string styleString(
+        std::string style_string(
             "label, scale { font-family: Arial; font-weight: bold; }\n "
             "button, entry, textview { font-family: Arial; font-weight: bold;}");
 #endif
@@ -503,201 +503,201 @@ class GtkMainWindow {
 #if defined __APPLE__
         gtk_css_provider_load_from_data(textProvider, styleString.c_str(), -1);
 #else
-        gtk_css_provider_load_from_string(textProvider, styleString.c_str());
+        gtk_css_provider_load_from_string(text_provider, style_string.c_str());
 #endif
         gtk_style_context_add_provider_for_display(gdk_display_get_default(),
-                                                   GTK_STYLE_PROVIDER(textProvider),
+                                                   GTK_STYLE_PROVIDER(text_provider),
                                                    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-        GtkCssProvider *buttonShrinker = gtk_css_provider_new();
-        std::string buttonStyle("label, scale, button, entry, textview "
+        GtkCssProvider *button_shrinker = gtk_css_provider_new();
+        std::string button_style("label, scale, button, entry, textview "
                                 "{ min-height: 17px; min-width: 8px; }");
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker, buttonStyle.c_str(), -1);
 #else
-        gtk_css_provider_load_from_string(buttonShrinker, buttonStyle.c_str());
+        gtk_css_provider_load_from_string(button_shrinker, button_style.c_str());
 #endif
         gtk_style_context_add_provider_for_display(gdk_display_get_default(),
-                                                   GTK_STYLE_PROVIDER(buttonShrinker),
+                                                   GTK_STYLE_PROVIDER(button_shrinker),
                                                    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-        window = gtk_application_window_new(appHandle);
-        gtk_window_set_title(GTK_WINDOW(window), windowName);
+        window = gtk_application_window_new(app_handle);
+        gtk_window_set_title(GTK_WINDOW(window), window_name);
         gtk_window_set_default_size(GTK_WINDOW(window), width, height);
-        bigGrid = gtk_grid_new();
-        consoleGrid = gtk_grid_new();
-        consoleControlsGrid = gtk_grid_new();
-        consoleControlsSubgrid1 = gtk_grid_new();
-        consoleControlsSubgrid2 = gtk_grid_new();
-        plotGrid = gtk_grid_new();
-        plotControlsGrid = gtk_grid_new();
-        plotControlsSubgrid1 = gtk_grid_new();
-        plotControlsSubgrid2 = gtk_grid_new();
+        big_grid = gtk_grid_new();
+        console_grid = gtk_grid_new();
+        console_controls_grid = gtk_grid_new();
+        console_controls_subgrid1 = gtk_grid_new();
+        console_controls_subgrid2 = gtk_grid_new();
+        plot_grid = gtk_grid_new();
+        plot_controls_grid = gtk_grid_new();
+        plot_controls_subgrid1 = gtk_grid_new();
+        plot_controls_subgrid2 = gtk_grid_new();
         grid = gtk_grid_new();
         gtk_grid_set_row_spacing(GTK_GRID(grid), 1);
         gtk_grid_set_column_spacing(GTK_GRID(grid), 1);
 
-        gtk_grid_set_row_spacing(GTK_GRID(bigGrid), 1);
-        gtk_grid_set_column_spacing(GTK_GRID(bigGrid), 1);
-        gtk_grid_set_row_spacing(GTK_GRID(plotGrid), 1);
-        gtk_grid_set_column_spacing(GTK_GRID(plotGrid), 1);
+        gtk_grid_set_row_spacing(GTK_GRID(big_grid), 1);
+        gtk_grid_set_column_spacing(GTK_GRID(big_grid), 1);
+        gtk_grid_set_row_spacing(GTK_GRID(plot_grid), 1);
+        gtk_grid_set_column_spacing(GTK_GRID(plot_grid), 1);
         gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
-        gtk_grid_set_column_homogeneous(GTK_GRID(consoleControlsGrid), true);
+        gtk_grid_set_column_homogeneous(GTK_GRID(console_controls_grid), true);
         gtk_grid_set_column_homogeneous(GTK_GRID(grid), true);
-        gtk_grid_set_column_homogeneous(GTK_GRID(plotGrid), true);
-        gtk_grid_set_row_homogeneous(GTK_GRID(plotGrid), true);
-        gtk_grid_set_row_spacing(GTK_GRID(consoleGrid), 1);
-        gtk_grid_set_column_spacing(GTK_GRID(consoleControlsGrid), 1);
-        gtk_grid_set_column_spacing(GTK_GRID(consoleGrid), 1);
+        gtk_grid_set_column_homogeneous(GTK_GRID(plot_grid), true);
+        gtk_grid_set_row_homogeneous(GTK_GRID(plot_grid), true);
+        gtk_grid_set_row_spacing(GTK_GRID(console_grid), 1);
+        gtk_grid_set_column_spacing(GTK_GRID(console_controls_grid), 1);
+        gtk_grid_set_column_spacing(GTK_GRID(console_grid), 1);
 
-        gtk_window_set_child(GTK_WINDOW(window), bigGrid);
+        gtk_window_set_child(GTK_WINDOW(window), big_grid);
 
         gtk_widget_set_hexpand(grid, false);
         gtk_widget_set_vexpand(grid, false);
         gtk_widget_set_halign(grid, GTK_ALIGN_END);
         gtk_widget_set_valign(grid, GTK_ALIGN_START);
 
-        gtk_widget_set_hexpand(consoleGrid, false);
-        gtk_widget_set_vexpand(consoleGrid, true);
-        gtk_widget_set_halign(consoleGrid, GTK_ALIGN_FILL);
-        gtk_widget_set_valign(consoleGrid, GTK_ALIGN_FILL);
+        gtk_widget_set_hexpand(console_grid, false);
+        gtk_widget_set_vexpand(console_grid, true);
+        gtk_widget_set_halign(console_grid, GTK_ALIGN_FILL);
+        gtk_widget_set_valign(console_grid, GTK_ALIGN_FILL);
 
-        gtk_widget_set_hexpand(consoleControlsGrid, false);
-        gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
+        gtk_widget_set_hexpand(console_controls_grid, false);
+        gtk_widget_set_halign(console_controls_grid, GTK_ALIGN_FILL);
 
-        gtk_widget_set_valign(consoleControlsSubgrid1, GTK_ALIGN_CENTER);
-        gtk_widget_set_halign(consoleControlsSubgrid2, GTK_ALIGN_END);
-        gtk_grid_attach(GTK_GRID(bigGrid), consoleGrid, 0, 1, 1, 1);
-        gtk_grid_attach(GTK_GRID(bigGrid), consoleControlsGrid, 0, 2, 1, 1);
-        gtk_grid_attach(GTK_GRID(consoleControlsGrid), consoleControlsSubgrid1, 0, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(consoleControlsGrid), consoleControlsSubgrid2, 1, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(bigGrid), plotGrid, 1, 0, 1, 2);
-        gtk_grid_attach(GTK_GRID(bigGrid), grid, 0, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(bigGrid), plotControlsGrid, 1, 2, 1, 1);
-        gtk_grid_attach(GTK_GRID(plotControlsGrid), plotControlsSubgrid1, 0, 0, 1, 1);
-        gtk_grid_attach(GTK_GRID(plotControlsGrid), plotControlsSubgrid2, 1, 0, 1, 1);
+        gtk_widget_set_valign(console_controls_subgrid1, GTK_ALIGN_CENTER);
+        gtk_widget_set_halign(console_controls_subgrid2, GTK_ALIGN_END);
+        gtk_grid_attach(GTK_GRID(big_grid), console_grid, 0, 1, 1, 1);
+        gtk_grid_attach(GTK_GRID(big_grid), console_controls_grid, 0, 2, 1, 1);
+        gtk_grid_attach(GTK_GRID(console_controls_grid), console_controls_subgrid1, 0, 0, 1, 1);
+        gtk_grid_attach(GTK_GRID(console_controls_grid), console_controls_subgrid2, 1, 0, 1, 1);
+        gtk_grid_attach(GTK_GRID(big_grid), plot_grid, 1, 0, 1, 2);
+        gtk_grid_attach(GTK_GRID(big_grid), grid, 0, 0, 1, 1);
+        gtk_grid_attach(GTK_GRID(big_grid), plot_controls_grid, 1, 2, 1, 1);
+        gtk_grid_attach(GTK_GRID(plot_controls_grid), plot_controls_subgrid1, 0, 0, 1, 1);
+        gtk_grid_attach(GTK_GRID(plot_controls_grid), plot_controls_subgrid2, 1, 0, 1, 1);
     }
     void present() {
-        std::unique_lock GTKlock(GTKmutex);
+        std::unique_lock gt_klock(gt_kmutex);
         gtk_window_present(GTK_WINDOW(window));
     }
 
-    GtkWidget *parentHandle() const { return grid; }
-    void toggleSettingsPanel() {
-        std::unique_lock GTKlock(GTKmutex);
-        showingControlsPanel = !showingControlsPanel;
-        gtk_widget_set_visible(grid, showingControlsPanel);
-        gtk_widget_set_visible(consoleGrid, showingControlsPanel);
-        gtk_widget_set_visible(consoleControlsSubgrid1, showingControlsPanel);
-        gtk_widget_set_visible(consoleControlsSubgrid2, showingControlsPanel);
+    GtkWidget *parent_handle() const { return grid; }
+    void toggle_settings_panel() {
+        std::unique_lock gt_klock(gt_kmutex);
+        showing_controls_panel = !showing_controls_panel;
+        gtk_widget_set_visible(grid, showing_controls_panel);
+        gtk_widget_set_visible(console_grid, showing_controls_panel);
+        gtk_widget_set_visible(console_controls_subgrid1, showing_controls_panel);
+        gtk_widget_set_visible(console_controls_subgrid2, showing_controls_panel);
     }
-    GtkWidget *parentHandle(const int index) const {
+    GtkWidget *parent_handle(const int index) const {
         switch(index) {
             case 0:
                 return grid;
             case 1:
-                return consoleGrid;
+                return console_grid;
             case 2:
-                return plotGrid;
+                return plot_grid;
             case 3:
-                return plotControlsSubgrid1;
+                return plot_controls_subgrid1;
             case 4:
-                return plotControlsSubgrid2;
+                return plot_controls_subgrid2;
             case 5:
-                return consoleControlsSubgrid1;
+                return console_controls_subgrid1;
             case 6:
-                return consoleControlsSubgrid2;
+                return console_controls_subgrid2;
         }
         return grid;
     }
 
-    GtkWindow *windowHandle() { return GTK_WINDOW(window); }
-    void connectUpdateFunction(auto function) {
-        updaterID = g_timeout_add(50, G_SOURCE_FUNC(function), NULL);
+    GtkWindow *window_handle() { return GTK_WINDOW(window); }
+    void connect_update_function(auto function) {
+        updater_id = g_timeout_add(50, G_SOURCE_FUNC(function), NULL);
     }
-    void removeUpdateFunction() { g_source_remove(updaterID); }
+    void remove_update_function() { g_source_remove(updater_id); }
 };
 
 class GtkDrawBox : public GtkGuiElement {
   public:
     void init(GtkWidget *grid, const int x, const int y, const int width, const int height) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_drawing_area_new();
-        gtk_widget_set_hexpand(elementHandle, true);
-        gtk_widget_set_vexpand(elementHandle, true);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
-        GTKlock.lock();
-        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 320);
-        gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 12);
+        std::unique_lock gt_klock(gt_kmutex);
+        element_handle = gtk_drawing_area_new();
+        gtk_widget_set_hexpand(element_handle, true);
+        gtk_widget_set_vexpand(element_handle, true);
+        gt_klock.unlock();
+        set_position(grid, x, y, width, height);
+        gt_klock.lock();
+        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(element_handle), 320);
+        gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(element_handle), 12);
     }
-    void setDrawingFunction(GtkDrawingAreaDrawFunc theFunction) {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(elementHandle), theFunction, NULL, NULL);
+    void set_drawing_function(GtkDrawingAreaDrawFunc the_function) {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(element_handle), the_function, NULL, NULL);
     }
-    void queueDraw() {
-        if(!GTK_IS_WIDGET(elementHandle))
+    void queue_draw() {
+        if(!GTK_IS_WIDGET(element_handle))
             return;
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_widget_queue_draw(elementHandle);
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_widget_queue_draw(element_handle);
     }
-    void noVerticalExpantion() {
-        std::unique_lock GTKlock(GTKmutex);
-        gtk_widget_set_vexpand(elementHandle, false);
+    void no_vertical_expantion() {
+        std::unique_lock gt_klock(gt_kmutex);
+        gtk_widget_set_vexpand(element_handle, false);
     }
 };
 
-static void pathFromLoadDialogCallback(GObject *gobject, GAsyncResult *result, gpointer data) {
-    GtkTextBox &destinationPathBox = *reinterpret_cast<GtkTextBox *>(data);
+static void path_from_load_dialog_callback(GObject *gobject, GAsyncResult *result, gpointer data) {
+    GtkTextBox &destination_path_box = *reinterpret_cast<GtkTextBox *>(data);
     GError *error = nullptr;
     GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if(error == nullptr) {
-        std::string resultString(g_file_get_path(file));
-        destinationPathBox.overwritePrint(resultString);
+        std::string result_string(g_file_get_path(file));
+        destination_path_box.overwrite_print(result_string);
     }
 }
 static void
-pathFromLoadDialogToStringCallback(GObject *gobject, GAsyncResult *result, gpointer data) {
-    std::string &destinationPath = *reinterpret_cast<std::string *>(data);
+path_from_load_dialog_to_string_callback(GObject *gobject, GAsyncResult *result, gpointer data) {
+    std::string &destination_path = *reinterpret_cast<std::string *>(data);
     GError *error = nullptr;
     GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
 
     if(error == nullptr) {
-        destinationPath = std::string(g_file_get_path(file));
+        destination_path = std::string(g_file_get_path(file));
     } else {
-        destinationPath = std::string("?LWE_NOPATH??");
+        destination_path = std::string("?LWE_NOPATH??");
     }
 }
 
-inline void pathFromLoadDialog(GtkTextBox &destinationPathBox) {
+inline void path_from_load_dialog(GtkTextBox &destination_path_box) {
     GtkFileDialog *dialog = gtk_file_dialog_new();
-    gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogCallback, &destinationPathBox);
+    gtk_file_dialog_open(dialog, NULL, NULL, path_from_load_dialog_callback, &destination_path_box);
 }
-inline void pathFromLoadDialog(std::string &destinationPath) {
+inline void path_from_load_dialog(std::string &destination_path) {
     GtkFileDialog *dialog = gtk_file_dialog_new();
-    gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogToStringCallback, &destinationPath);
+    gtk_file_dialog_open(dialog, NULL, NULL, path_from_load_dialog_to_string_callback, &destination_path);
 }
 
 [[maybe_unused]] static void
-pathFromSaveDialogCallback(GObject *gobject, GAsyncResult *result, gpointer data) {
-    GtkTextBox &destinationPathBox = *reinterpret_cast<GtkTextBox *>(data);
+path_from_save_dialog_callback(GObject *gobject, GAsyncResult *result, gpointer data) {
+    GtkTextBox &destination_path_box = *reinterpret_cast<GtkTextBox *>(data);
     GError *error = nullptr;
     GFile *file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if(error == nullptr) {
         std::string path(g_file_get_path(file));
-        destinationPathBox.overwritePrint(path);
+        destination_path_box.overwrite_print(path);
     }
 }
 [[maybe_unused]] static void
-pathFromSaveDialogStringCallback(GObject *gobject, GAsyncResult *result, gpointer data) {
-    std::string &destinationPath = *reinterpret_cast<std::string *>(data);
+path_from_save_dialog_string_callback(GObject *gobject, GAsyncResult *result, gpointer data) {
+    std::string &destination_path = *reinterpret_cast<std::string *>(data);
     GError *error = nullptr;
     GFile *file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if(error == nullptr) {
-        destinationPath = std::string(g_file_get_path(file));
+        destination_path = std::string(g_file_get_path(file));
     }
 }
-inline void pathFromSaveDialog(GtkTextBox &destinationPathBox) {
+inline void path_from_save_dialog(GtkTextBox &destination_path_box) {
 #ifdef __APPLE__
     NSString *filePath;
     NSSavePanel *savePanel = [NSSavePanel savePanel];
@@ -720,7 +720,7 @@ inline void pathFromSaveDialog(GtkTextBox &destinationPathBox) {
     g_list_store_append(filters, filter);
 
     gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
-    gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogCallback, &destinationPathBox);
+    gtk_file_dialog_save(dialog, NULL, NULL, path_from_save_dialog_callback, &destination_path_box);
 #endif
 }
 #ifdef __APPLE__
@@ -735,9 +735,9 @@ std::string pathFromAppleSaveDialog() {
     }
 }
 #endif
-inline void pathFromSaveDialog(std::string &destinationPath,
+inline void path_from_save_dialog(std::string &destination_path,
                                const std::string &suffix,
-                               const std::string &filetypeName) {
+                               const std::string &filetype_name) {
 #ifdef __APPLE__
     NSString *filePath;
     NSSavePanel *savePanel = [NSSavePanel savePanel];
@@ -751,7 +751,7 @@ inline void pathFromSaveDialog(std::string &destinationPath,
 
     GtkFileFilter *filter = gtk_file_filter_new();
     gtk_file_filter_add_suffix(filter, suffix.c_str());
-    gtk_file_filter_set_name(filter, filetypeName.c_str());
+    gtk_file_filter_set_name(filter, filetype_name.c_str());
     g_list_store_append(filters, filter);
 
     filter = gtk_file_filter_new();
@@ -760,27 +760,27 @@ inline void pathFromSaveDialog(std::string &destinationPath,
     g_list_store_append(filters, filter);
 
     gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
-    gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogStringCallback, &destinationPath);
+    gtk_file_dialog_save(dialog, NULL, NULL, path_from_save_dialog_string_callback, &destination_path);
 #endif
 }
 
 typedef void (*loadingFunction)(std::string);
-static void loadDataCallback(GObject *gobject, GAsyncResult *result, gpointer data) {
+static void load_data_callback(GObject *gobject, GAsyncResult *result, gpointer data) {
     GError *error = nullptr;
     GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if(error == nullptr) {
         std::string path(g_file_get_path(file));
 
-        loadingFunction loadingFunctionPointer = reinterpret_cast<loadingFunction>(data);
-        (loadingFunctionPointer)(path);
+        loadingFunction loading_function_pointer = reinterpret_cast<loadingFunction>(data);
+        (loading_function_pointer)(path);
     }
 }
 
-inline void loadFromLoadDialog(loadingFunction loadingFunctionPointer) {
+inline void load_from_load_dialog(loadingFunction loading_function_pointer) {
     GtkFileDialog *dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog,
                          NULL,
                          NULL,
-                         loadDataCallback,
-                         reinterpret_cast<gpointer>(loadingFunctionPointer));
+                         load_data_callback,
+                         reinterpret_cast<gpointer>(loading_function_pointer));
 }
