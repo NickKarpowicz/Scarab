@@ -1,13 +1,37 @@
 #include "gtk/gtk.h"
 bool update_display();
 void handle_run_button();
-void draw_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_spectrum_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_spectra_frequency(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_interference_spectrum(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_interference_spectrum_time(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_interference_phase(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-void draw_interference_group_delay(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void draw_spectrum(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data);
+void draw_spectrum_frequency(GtkDrawingArea *area,
+                             cairo_t *cr,
+                             int width,
+                             int height,
+                             gpointer data);
+void draw_spectra_frequency(GtkDrawingArea *area,
+                            cairo_t *cr,
+                            int width,
+                            int height,
+                            gpointer data);
+void draw_interference_spectrum(GtkDrawingArea *area,
+                                cairo_t *cr,
+                                int width,
+                                int height,
+                                gpointer data);
+void draw_interference_spectrum_time(GtkDrawingArea *area,
+                                     cairo_t *cr,
+                                     int width,
+                                     int height,
+                                     gpointer data);
+void draw_interference_phase(GtkDrawingArea *area,
+                             cairo_t *cr,
+                             int width,
+                             int height,
+                             gpointer data);
+void draw_interference_group_delay(GtkDrawingArea *area,
+                                   cairo_t *cr,
+                                   int width,
+                                   int height,
+                                   gpointer data);
 void drop_down_change_callback();
 void handle_get_overlay0();
 void handle_get_overlay1();

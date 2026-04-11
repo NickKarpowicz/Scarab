@@ -1,0 +1,19 @@
+Checks: >
+  readability-identifier-naming
+
+CheckOptions:
+  readability-identifier-naming:
+    FunctionCase: snake_case
+    VariableCase: snake_case
+    ClassCase: CamelCase
+    StructCase: CamelCase
+    EnumCase: CamelCase
+    EnumConstantCase: UPPER_CASE
+    ConstexprVariableCase: UPPER_CASE
+    GlobalConstantCase: UPPER_CASE
+    NamespaceCase: snake_case
+    ParameterCase: snake_case
+    MemberCase: snake_case
+    PrivateMemberCase: snake_case
+    ProtectedMemberCase: snake_case
+    PublicMemberCase: snake_case
