@@ -27,11 +27,11 @@ class GtkGuiElement {
     GtkWidget *grid = nullptr;
 
     void
-    set_position(GtkWidget *grid, const int x, const int y, const int width, const int height) {
+    set_position(GtkWidget *input_grid, const int x, const int y, const int width, const int height) {
         std::unique_lock gtk_lock(gt_kmutex);
         if(grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(grid))
             gtk_grid_remove(GTK_GRID(grid), element_handle);
-        grid = grid;
+        grid = input_grid;
         m_x = x;
         m_y = y;
         m_width = width;
