@@ -24,24 +24,24 @@ class GtkGuiElement {
     int m_width{};
     int m_height{};
     bool is_attached = false;
-    GtkWidget *grid = nullptr;
+    GtkWidget *m_grid = nullptr;
 
     void
     set_position(GtkWidget *input_grid, const int x, const int y, const int width, const int height) {
         std::unique_lock gtk_lock(gt_kmutex);
-        if(grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(grid))
-            gtk_grid_remove(GTK_GRID(grid), element_handle);
-        grid = input_grid;
+        if(m_grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(m_grid))
+            gtk_grid_remove(GTK_GRID(m_grid), element_handle);
+        m_grid = input_grid;
         m_x = x;
         m_y = y;
         m_width = width;
         m_height = height;
-        if(GTK_IS_GRID(grid))
-            gtk_grid_attach(GTK_GRID(grid), element_handle, m_x, m_y, m_width, m_height);
+        if(GTK_IS_GRID(m_grid))
+            gtk_grid_attach(GTK_GRID(m_grid), element_handle, m_x, m_y, m_width, m_height);
     }
     void remove() {
-        if(grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(grid))
-            gtk_grid_remove(GTK_GRID(grid), element_handle);
+        if(m_grid && gtk_widget_get_parent(element_handle) == GTK_WIDGET(m_grid))
+            gtk_grid_remove(GTK_GRID(m_grid), element_handle);
     }
     void set_label(const int x, const int y, const char *label_text) {
         std::unique_lock gtk_lock(gt_kmutex);
@@ -49,8 +49,8 @@ class GtkGuiElement {
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), 45);
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        if(GTK_IS_GRID(grid))
-            gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, 6, 1);
+        if(GTK_IS_GRID(m_grid))
+            gtk_grid_attach(GTK_GRID(m_grid), label, m_x + x, m_y + y, 6, 1);
     }
     void set_label(const int x,
                    const int y,
@@ -62,7 +62,7 @@ class GtkGuiElement {
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), characters);
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        gtk_grid_attach(GTK_GRID(grid), label, m_x + x, m_y + y, grids, 1);
+        gtk_grid_attach(GTK_GRID(m_grid), label, m_x + x, m_y + y, grids, 1);
     }
     void squeeze() {
         std::unique_lock gtk_lock(gt_kmutex);

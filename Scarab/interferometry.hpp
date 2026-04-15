@@ -73,10 +73,7 @@ class SpectralInterferometry {
 
     void filtered_hilbert(std::vector<double> &in_data,
                           std::vector<double> &out_data_real,
-                          std::vector<double> &out_data_imag,
-                          double filter0,
-                          double filter_sigma,
-                          int filter_ord) {
+                          std::vector<double> &out_data_imag) {
         if(fft_size != num_freqs) {
             setup_fft();
         }
@@ -87,16 +84,16 @@ class SpectralInterferometry {
                        pocketfft::shape_t{0},
                        pocketfft::FORWARD,
                        in_data.data(),
-                       hilbert_time_buffer.data(),
+                       hilbert_time_buffer2.data(),
                        1.0);
 
-        double dt = 1.0 / (num_freqs * d_f);
+        double dt = 1.0e3 / (num_freqs * d_f);
         std::complex<double> ii(0.0, 1.0);
         for(size_t i = 0; i < (num_freqs / 2 + 1); i++) {
-            hilbert_time_buffer[i] *= std::exp(
-                -std::pow((static_cast<double>(i) * dt - filter0) / filter_sigma, filter_ord) /
+            hilbert_time_buffer2[i] *= std::exp(
+                -std::pow((static_cast<double>(i) * dt - filter_t0) / filter_width, filter_order) /
                 sqrt(2.0));
-            hilbert_time_buffer2[i] = ii * hilbert_time_buffer[i];
+            hilbert_time_buffer[i] = ii * hilbert_time_buffer2[i];
         }
 
         pocketfft::c2r(pocketfft::shape_t{out_data_real.size()},
@@ -210,10 +207,7 @@ class SpectralInterferometry {
         }
         filtered_hilbert(hilbert_real_buffer,
                          hilbert_real_buffer,
-                         hilbert_imag_buffer,
-                         filter_t0,
-                         filter_width,
-                         8);
+                         hilbert_imag_buffer);
         spectral_phase = std::vector<double>(num_freqs);
         for(size_t i = 0; i < num_freqs; i++) {
             spectral_phase[i] = std::atan2(hilbert_real_buffer[i], hilbert_imag_buffer[i]);
