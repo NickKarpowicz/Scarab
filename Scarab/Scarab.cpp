@@ -1181,6 +1181,7 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
     double t0 = the_gui.text_boxes[18].value_double();
     double sigma = the_gui.text_boxes[19].value_double();
     double ord = the_gui.text_boxes[20].value_double();
+    the_interference_controller.set_time_filter(t0, sigma, ord);
     if(the_gui.running_live() &&
        !(*spectrometer_set[the_gui.pulldowns[0].get_value()]).check_lock()) {
         (*spectrometer_set[the_gui.pulldowns[0].get_value()])
@@ -1190,7 +1191,6 @@ void draw_interference_spectrum_time(GtkDrawingArea *area,
         the_interference_controller.acquire_new_interferogram(
             (*spectrometer_set[the_gui.pulldowns[0].get_value()]));
     }
-    the_interference_controller.set_time_filter(t0, sigma, ord);
     the_interference_controller.generate_time_plot();
 
     s_plot.height = height;
@@ -1299,6 +1299,10 @@ void draw_interference_phase(GtkDrawingArea *area,
                                    1);
     }
 
+    double t0 = the_gui.text_boxes[18].value_double();
+    double sigma = the_gui.text_boxes[19].value_double();
+    double ord = the_gui.text_boxes[20].value_double();
+    the_interference_controller.set_time_filter(t0, sigma, ord);
     if(the_gui.running_live() &&
        !(*spectrometer_set[the_gui.pulldowns[0].get_value()]).check_lock()) {
         (*spectrometer_set[the_gui.pulldowns[0].get_value()])
@@ -1412,6 +1416,10 @@ void draw_interference_group_delay(GtkDrawingArea *area,
                                    1);
     }
 
+    double t0 = the_gui.text_boxes[18].value_double();
+    double sigma = the_gui.text_boxes[19].value_double();
+    double ord = the_gui.text_boxes[20].value_double();
+    the_interference_controller.set_time_filter(t0, sigma, ord);
     if(the_gui.running_live() &&
        !(*spectrometer_set[the_gui.pulldowns[0].get_value()]).check_lock()) {
         (*spectrometer_set[the_gui.pulldowns[0].get_value()])
