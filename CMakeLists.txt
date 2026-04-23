@@ -55,5 +55,13 @@ else()
 endif()
 target_link_libraries(scarab ${GTK4_LIBRARIES})
 target_link_libraries(scarab OpenMP::OpenMP_CXX)
+
+if(WIN32)
+  add_executable(scarab_launcher Scarab/windows_launcher.cpp)
+  set_target_properties(scarab_launcher PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+  install(TARGETS scarab_launcher)
+endif()
 install(TARGETS scarab)
 install(FILES BuildResources/io.github.NickKarpowicz.Scarab.desktop DESTINATION share/applications)
