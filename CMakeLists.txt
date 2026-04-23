@@ -61,6 +61,7 @@ if(WIN32)
   set_target_properties(scarab_launcher PROPERTIES
         WIN32_EXECUTABLE TRUE
         LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+  target_link_libraries(scarab_launcher PRIVATE Shlwapi)
   install(TARGETS scarab_launcher)
 endif()
 install(TARGETS scarab)
