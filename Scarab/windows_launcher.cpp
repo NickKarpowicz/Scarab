@@ -3,7 +3,7 @@
 #include <shlwapi.h>
 #include <stdio.h>
 #include <tchar.h>
-int wmain(void)
+int main(void)
 {
     wchar_t exe_path[MAX_PATH];
     GetModuleFileNameW(NULL, exe_path, MAX_PATH);
